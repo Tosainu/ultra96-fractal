@@ -161,6 +161,22 @@ set obj [get_filesets utils_1]
 # Set 'utils_1' fileset properties
 set obj [get_filesets utils_1]
 
+
+# Adding sources referenced in BDs, if not already added
+
+
+# Create BD system
+source "$origin_dir/block_design/system.tcl"
+cr_bd_system ""
+set_property REGISTERED_WITH_MANAGER "1" [get_files system.bd ]
+set_property SYNTH_CHECKPOINT_MODE "Hierarchical" [get_files system.bd ]
+set system_bd_wrapper [make_wrapper -files [get_files system.bd] -top]
+if { $system_bd_wrapper eq "" } {
+  puts "ERROR: Failed to generate system.bd wrapper files.\n"
+  return 1
+}
+add_files -norecurse $system_bd_wrapper
+
 # Create 'synth_1' run (if not found)
 if {[string equal [get_runs -quiet synth_1] ""]} {
     create_run -name synth_1 -part xczu3eg-sbva484-1-e -flow {Vivado Synthesis 2018} -strategy "Vivado Synthesis Defaults" -report_strategy {No Reports} -constrset constrs_1
