@@ -1,20 +1,13 @@
 #include <cmath>
 #include <complex>
 
+#include "color_table.h"
 #include "fractal.h"
 
-uint24_type colorize(fix64_type t) {
-  // https://solarianprogrammer.com/2013/02/28/mandelbrot-set-cpp-11/
-  const fix64_type one{1.0};
-  const fix64_type r = fix64_type{8.5} * (one - t) * (one - t) * (one - t) * t;
-  const fix64_type g = fix64_type{15.0} * (one - t) * (one - t) * t * t;
-  const fix64_type b = fix64_type{9.0} * (one - t) * t * t * t;
+static constexpr auto color_table = make_color_table();
 
-  uint24_type rgb = 0;
-  rgb |= static_cast<uint24_type>(std::min(r, one) * fix64_type{255.0});
-  rgb |= static_cast<uint24_type>(std::min(g, one) * fix64_type{255.0}) << 8;
-  rgb |= static_cast<uint24_type>(std::min(b, one) * fix64_type{255.0}) << 16;
-  return rgb;
+uint24_type colorize(std::uint32_t i) {
+  return static_cast<uint24_type>(color_table[i]);
 }
 
 void fractal(stream_type& m_axis) {
@@ -58,7 +51,7 @@ void fractal(stream_type& m_axis) {
         i++;
       }
 
-      video.data = colorize(static_cast<fix64_type>(i) / fix64_type{255.0});
+      video.data = colorize(i);
 
       m_axis << video;
     }
