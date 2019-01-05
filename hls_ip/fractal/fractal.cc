@@ -16,7 +16,7 @@ std::uint32_t evaluate(std::complex<fix64_type> c, std::complex<fix64_type> z) {
   bool finished   = false;
   std::uint32_t i = 0;
   for (std::uint32_t t = 0; t < MAX_ITERATIONS; ++t) {
-    finished = finished ? finished : z.real() * z.real() + z.imag() * z.imag() > 4.0;
+    finished = finished ? finished : z.real() * z.real() + z.imag() * z.imag() > fix64_type{4.0};
 
     z = z * z + c;
     i = finished ? i : i + 1;
