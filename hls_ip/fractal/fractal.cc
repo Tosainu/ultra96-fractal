@@ -15,6 +15,7 @@ std::complex<fix64_type> initialize_z(std::uint32_t x, std::uint32_t y, fix64_ty
 std::uint32_t evaluate(std::complex<fix64_type> c, std::complex<fix64_type> z) {
   bool finished   = false;
   std::uint32_t i = 0;
+loop_evaluate:
   for (std::uint32_t t = 0; t < MAX_ITERATIONS; ++t) {
     finished = finished ? finished : z.real() * z.real() + z.imag() * z.imag() > fix64_type{4.0};
 
@@ -59,7 +60,9 @@ void fractal(stream_type& m_axis) {
 
   const auto c = std::complex<fix64_type>{-0.4, 0.6};
 
+loop_height:
   for (std::uint32_t y = 0; y < MAX_HEIGHT; y++) {
+  loop_width:
     for (std::uint32_t x = 0; x < MAX_WIDTH; x++) {
       const auto z = initialize_z(x, y, x1, y1, dx, dy, offset_x, offset_y);
       const auto i = evaluate(c, z);
