@@ -12,17 +12,20 @@ std::complex<fix64_type> initialize_z(std::uint32_t x, std::uint32_t y, fix64_ty
   return std::complex<fix64_type>{-x1 + dx * x + offset_x, -y1 + dy * y + offset_y};
 }
 
-std::uint32_t evaluate(std::complex<fix64_type> c, std::complex<fix64_type> z) {
-  bool finished   = false;
-  std::uint32_t i = 0;
-loop_evaluate:
-  for (std::uint32_t t = 0; t < MAX_ITERATIONS; ++t) {
-    finished = finished ? finished : z.real() * z.real() + z.imag() * z.imag() > fix64_type{4.0};
+bool finished(std::complex<fix64_type> z) {
+  return z.real() * z.real() + z.imag() * z.imag() > fix64_type{4.0};
+}
 
+template <std::uint32_t Iter>
+void evaluate(std::uint32_t i0, std::complex<fix64_type> c, std::complex<fix64_type> z0,
+              std::uint32_t& i, std::complex<fix64_type>& z) {
+  i = i0;
+  z = z0;
+loop_evaluate:
+  for (std::uint32_t t = 0; t < Iter && !finished(z); ++t) {
     z = z * z + c;
-    i = finished ? i : i + 1;
+    i = i + 1;
   }
-  return i;
 }
 
 uint24_type to_rgb(std::uint32_t i) {
@@ -65,10 +68,20 @@ loop_height:
   for (std::uint32_t y = 0; y < MAX_HEIGHT; y++) {
   loop_width:
     for (std::uint32_t x = 0; x < MAX_WIDTH; x++) {
-      const auto z = initialize_z(x, y, x1, y1, dx, dy, offset_x, offset_y);
-      const auto i = evaluate(c, z);
+      const auto z0 = initialize_z(x, y, x1, y1, dx, dy, offset_x, offset_y);
 
-      const auto d = to_rgb(i);
+      std::uint32_t i1, i2, i3, i4, i5, i6, i7, i8;
+      std::complex<fix64_type> z1, z2, z3, z4, z5, z6, z7, z8;
+      evaluate<(MAX_ITERATIONS + 1) / 8    >(0u, c, z0, i1, z1);
+      evaluate<(MAX_ITERATIONS + 1) / 8    >(i1, c, z1, i2, z2);
+      evaluate<(MAX_ITERATIONS + 1) / 8    >(i2, c, z2, i3, z3);
+      evaluate<(MAX_ITERATIONS + 1) / 8    >(i3, c, z3, i4, z4);
+      evaluate<(MAX_ITERATIONS + 1) / 8    >(i4, c, z4, i5, z5);
+      evaluate<(MAX_ITERATIONS + 1) / 8    >(i5, c, z5, i6, z6);
+      evaluate<(MAX_ITERATIONS + 1) / 8    >(i6, c, z6, i7, z7);
+      evaluate<(MAX_ITERATIONS + 1) / 8 - 1>(i7, c, z7, i8, z8);
+
+      const auto d = to_rgb(i8);
       const auto u = tuser(x, y);
       const auto l = tlast(x);
       const auto v = make_video(d, u, l);
