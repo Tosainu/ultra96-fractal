@@ -43,6 +43,7 @@ video_type make_video(uint24_type data, ap_uint<1> user, ap_uint<1> last) {
   p.data = data;
   p.user = user;
   p.last = last;
+  p.keep = -1;
   return p;
 }
 
