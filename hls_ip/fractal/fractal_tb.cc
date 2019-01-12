@@ -1,3 +1,6 @@
+#include <algorithm>
+#include <vector>
+
 #include <hls_opencv.h>
 #include "fractal.h"
 
@@ -9,6 +12,12 @@ auto main() -> int {
   stream_type stream_out;
   fractal(stream_out);
   AXIvideo2cvMat(stream_out, dst);
+
+  // GBR2BGR
+  auto channels = std::vector<cv::Mat>{};
+  cv::split(dst, channels);
+  std::swap(channels[0], channels[1]);
+  cv::merge(channels, dst);
 
   cv::imwrite(OUTPUT_IMAGE, dst);
 }
