@@ -28,24 +28,11 @@ loop_evaluate:
   }
 }
 
-uint24_type to_rgb(std::uint32_t i) {
-  return static_cast<uint24_type>(color_table[i]);
-}
-
-// Set Start-of-Frame (tuser) and End-of-Line (tlast) singale
-// https://forums.xilinx.com/t5/Video/Video-Beginner-Series-14-Creating-a-Pattern-Generator-using-HLS/m-p/895489/highlight/true#M21986
-ap_uint<1> tuser(std::uint32_t x, std::uint32_t y) {
-  return x == 0 && y == 0;
-}
-ap_uint<1> tlast(std::uint32_t x) {
-  return x == MAX_WIDTH - 1;
-}
-
-video_type make_video(uint24_type data, ap_uint<1> user, ap_uint<1> last) {
+video_type pack(std::uint32_t x, std::uint32_t y, std::uint32_t i) {
   auto p = video_type{};
-  p.data = data;
-  p.user = user;
-  p.last = last;
+  p.data = uint24_type{color_table[i]};
+  p.user = x == 0 && y == 0;   // Start-of-Frame
+  p.last = x == MAX_WIDTH - 1; // End-of-Line
   p.keep = -1;
   return p;
 }
@@ -81,10 +68,7 @@ loop_height:
       evaluate<(MAX_ITERATIONS + 1) / 8    >(i6, c, z6, i7, z7);
       evaluate<(MAX_ITERATIONS + 1) / 8 - 1>(i7, c, z7, i8, z8);
 
-      const auto d = to_rgb(i8);
-      const auto u = tuser(x, y);
-      const auto l = tlast(x);
-      const auto v = make_video(d, u, l);
+      const auto v = pack(x, y, i8);
 
       m_axis << v;
     }
