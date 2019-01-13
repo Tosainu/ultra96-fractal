@@ -16,19 +16,19 @@ bool finished(std::complex<fix64_type> z) {
   return z.real() * z.real() + z.imag() * z.imag() > fix64_type{4.0};
 }
 
-template <std::uint32_t Iter>
-void evaluate(std::uint32_t i0, std::complex<fix64_type> c, std::complex<fix64_type> z0,
-              std::uint32_t& i, std::complex<fix64_type>& z) {
+template <std::uint8_t Iter>
+void evaluate(std::uint8_t i0, std::complex<fix64_type> c, std::complex<fix64_type> z0,
+              std::uint8_t& i, std::complex<fix64_type>& z) {
   i = i0;
   z = z0;
 loop_evaluate:
-  for (std::uint32_t t = 0; t < Iter && !finished(z); ++t) {
+  for (std::uint8_t t = 0; t < Iter && !finished(z); ++t) {
     z = z * z + c;
     i = i + 1;
   }
 }
 
-video_type pack(std::uint32_t x, std::uint32_t y, std::uint32_t i) {
+video_type pack(std::uint32_t x, std::uint32_t y, std::uint8_t i) {
   auto p = video_type{};
   p.data = uint24_type{color_table[i]};
   p.user = x == 0 && y == 0;   // Start-of-Frame
@@ -57,7 +57,7 @@ loop_height:
     for (std::uint32_t x = 0; x < MAX_WIDTH; x++) {
       const auto z0 = initialize_z(x, y, x1, y1, dx, dy, offset_x, offset_y);
 
-      std::uint32_t i1, i2, i3, i4, i5, i6, i7, i8;
+      std::uint8_t i1, i2, i3, i4, i5, i6, i7, i8;
       std::complex<fix64_type> z1, z2, z3, z4, z5, z6, z7, z8;
       evaluate<(MAX_ITERATIONS + 1) / 8    >(0u, c, z0, i1, z1);
       evaluate<(MAX_ITERATIONS + 1) / 8    >(i1, c, z1, i2, z2);
