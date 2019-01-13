@@ -13,12 +13,14 @@ std::complex<fix64_type> initialize_z(std::uint32_t x, std::uint32_t y, fix64_ty
 }
 
 bool finished(std::complex<fix64_type> z) {
+#pragma HLS INLINE
   return z.real() * z.real() + z.imag() * z.imag() > fix64_type{4.0};
 }
 
 template <std::uint8_t Iter>
 void evaluate(std::uint8_t i0, std::complex<fix64_type> c, std::complex<fix64_type> z0,
               std::uint8_t& i, std::complex<fix64_type>& z) {
+#pragma HLS ALLOCATION instances=mul limit=2 operation
   i = i0;
   z = z0;
 loop_evaluate:
@@ -55,6 +57,7 @@ loop_height:
   for (std::uint32_t y = 0; y < MAX_HEIGHT; y++) {
   loop_width:
     for (std::uint32_t x = 0; x < MAX_WIDTH; x++) {
+#pragma HLS DATAFLOW
       const auto z0 = initialize_z(x, y, x1, y1, dx, dy, offset_x, offset_y);
 
       std::uint8_t i1, i2, i3, i4, i5, i6, i7, i8;
