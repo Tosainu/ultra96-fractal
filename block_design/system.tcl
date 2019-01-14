@@ -15,8 +15,18 @@ proc cr_bd_system { parentCell } {
   set bCheckIPs 1
   if { $bCheckIPs == 1 } {
      set list_check_ips "\ 
+  xilinx.com:ip:axi_vdma:6.3\
+  xilinx.com:ip:axis_clock_converter:1.1\
   xilinx.com:ip:clk_wiz:6.0\
+  xilinx.com:hls:fractal:1.0\
+  xilinx.com:ip:proc_sys_reset:5.0\
+  xilinx.com:ip:smartconnect:1.0\
+  xilinx.com:ip:v_axi4s_vid_out:4.0\
+  xilinx.com:ip:v_tc:6.1\
+  xilinx.com:ip:xlconcat:2.1\
   xilinx.com:ip:zynq_ultra_ps_e:3.2\
+  xilinx.com:ip:xlconstant:1.1\
+  xilinx.com:ip:xlslice:1.0\
   "
 
    set list_ips_missing ""
@@ -41,6 +51,98 @@ proc cr_bd_system { parentCell } {
     return 3
   }
 
+  
+# Hierarchical cell: to_live_video
+proc create_hier_cell_to_live_video { parentCell nameHier } {
+
+  variable script_folder
+
+  if { $parentCell eq "" || $nameHier eq "" } {
+     catch {common::send_msg_id "BD_TCL-102" "ERROR" "create_hier_cell_to_live_video() - Empty argument(s)!"}
+     return
+  }
+
+  # Get object for parentCell
+  set parentObj [get_bd_cells $parentCell]
+  if { $parentObj == "" } {
+     catch {common::send_msg_id "BD_TCL-100" "ERROR" "Unable to find parent cell <$parentCell>!"}
+     return
+  }
+
+  # Make sure parentObj is hier blk
+  set parentType [get_property TYPE $parentObj]
+  if { $parentType ne "hier" } {
+     catch {common::send_msg_id "BD_TCL-101" "ERROR" "Parent <$parentObj> has TYPE = <$parentType>. Expected to be <hier>."}
+     return
+  }
+
+  # Save current instance; Restore later
+  set oldCurInst [current_bd_instance .]
+
+  # Set parent object as current
+  current_bd_instance $parentObj
+
+  # Create cell and set as current instance
+  set hier_obj [create_bd_cell -type hier $nameHier]
+  current_bd_instance $hier_obj
+
+  # Create interface pins
+
+  # Create pins
+  create_bd_pin -dir I -from 23 -to 0 Din
+  create_bd_pin -dir O -from 35 -to 0 dout
+
+  # Create instance: xlconcat_0, and set properties
+  set xlconcat_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconcat:2.1 xlconcat_0 ]
+  set_property -dict [ list \
+   CONFIG.NUM_PORTS {6} \
+ ] $xlconcat_0
+
+  # Create instance: xlconstant_0, and set properties
+  set xlconstant_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconstant:1.1 xlconstant_0 ]
+  set_property -dict [ list \
+   CONFIG.CONST_VAL {0} \
+   CONFIG.CONST_WIDTH {4} \
+ ] $xlconstant_0
+
+  # Create instance: xlslice_b, and set properties
+  set xlslice_b [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlslice:1.0 xlslice_b ]
+  set_property -dict [ list \
+   CONFIG.DIN_FROM {15} \
+   CONFIG.DIN_TO {8} \
+   CONFIG.DIN_WIDTH {24} \
+   CONFIG.DOUT_WIDTH {8} \
+ ] $xlslice_b
+
+  # Create instance: xlslice_g, and set properties
+  set xlslice_g [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlslice:1.0 xlslice_g ]
+  set_property -dict [ list \
+   CONFIG.DIN_FROM {7} \
+   CONFIG.DIN_TO {0} \
+   CONFIG.DIN_WIDTH {24} \
+   CONFIG.DOUT_WIDTH {8} \
+ ] $xlslice_g
+
+  # Create instance: xlslice_r, and set properties
+  set xlslice_r [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlslice:1.0 xlslice_r ]
+  set_property -dict [ list \
+   CONFIG.DIN_FROM {23} \
+   CONFIG.DIN_TO {16} \
+   CONFIG.DIN_WIDTH {24} \
+   CONFIG.DOUT_WIDTH {8} \
+ ] $xlslice_r
+
+  # Create port connections
+  connect_bd_net -net Net [get_bd_pins Din] [get_bd_pins xlslice_b/Din] [get_bd_pins xlslice_g/Din] [get_bd_pins xlslice_r/Din]
+  connect_bd_net -net xlconcat_0_dout [get_bd_pins dout] [get_bd_pins xlconcat_0/dout]
+  connect_bd_net -net xlconstant_0_dout [get_bd_pins xlconcat_0/In0] [get_bd_pins xlconcat_0/In2] [get_bd_pins xlconcat_0/In4] [get_bd_pins xlconstant_0/dout]
+  connect_bd_net -net xlslice_0_Dout [get_bd_pins xlconcat_0/In3] [get_bd_pins xlslice_g/Dout]
+  connect_bd_net -net xlslice_b_Dout [get_bd_pins xlconcat_0/In1] [get_bd_pins xlslice_b/Dout]
+  connect_bd_net -net xlslice_r_Dout [get_bd_pins xlconcat_0/In5] [get_bd_pins xlslice_r/Dout]
+
+  # Restore current instance
+  current_bd_instance $oldCurInst
+}
   variable script_folder
 
   if { $parentCell eq "" } {
@@ -72,15 +174,116 @@ proc cr_bd_system { parentCell } {
 
   # Create ports
 
+  # Create instance: axi_vdma_0, and set properties
+  set axi_vdma_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_vdma:6.3 axi_vdma_0 ]
+  set_property -dict [ list \
+   CONFIG.c_m_axis_mm2s_tdata_width {24} \
+   CONFIG.c_mm2s_genlock_mode {3} \
+   CONFIG.c_mm2s_linebuffer_depth {2048} \
+   CONFIG.c_mm2s_max_burst_length {32} \
+   CONFIG.c_s2mm_genlock_mode {2} \
+   CONFIG.c_s2mm_linebuffer_depth {2048} \
+   CONFIG.c_s2mm_max_burst_length {32} \
+ ] $axi_vdma_0
+
+  # Create instance: axis_clock_converter_0, and set properties
+  set axis_clock_converter_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axis_clock_converter:1.1 axis_clock_converter_0 ]
+
   # Create instance: clk_wiz_0, and set properties
   set clk_wiz_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:clk_wiz:6.0 clk_wiz_0 ]
   set_property -dict [ list \
-   CONFIG.CLKOUT1_JITTER {107.567} \
-   CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {150} \
-   CONFIG.MMCM_CLKOUT0_DIVIDE_F {8.000} \
+   CONFIG.CLKOUT1_JITTER {92.548} \
+   CONFIG.CLKOUT1_PHASE_ERROR {76.967} \
+   CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {125} \
+   CONFIG.CLKOUT2_JITTER {89.612} \
+   CONFIG.CLKOUT2_PHASE_ERROR {76.967} \
+   CONFIG.CLKOUT2_REQUESTED_OUT_FREQ {150} \
+   CONFIG.CLKOUT2_USED {true} \
+   CONFIG.MMCM_CLKFBOUT_MULT_F {15.000} \
+   CONFIG.MMCM_CLKOUT0_DIVIDE_F {12.000} \
+   CONFIG.MMCM_CLKOUT1_DIVIDE {10} \
    CONFIG.MMCM_DIVCLK_DIVIDE {1} \
+   CONFIG.NUM_OUT_CLKS {2} \
    CONFIG.USE_RESET {false} \
  ] $clk_wiz_0
+
+  # Create instance: fractal_0, and set properties
+  set fractal_0 [ create_bd_cell -type ip -vlnv xilinx.com:hls:fractal:1.0 fractal_0 ]
+
+  # Create instance: rst_clk_wiz_0_125M, and set properties
+  set rst_clk_wiz_0_125M [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 rst_clk_wiz_0_125M ]
+
+  # Create instance: rst_clk_wiz_0_150M, and set properties
+  set rst_clk_wiz_0_150M [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 rst_clk_wiz_0_150M ]
+
+  # Create instance: smartconnect_hp0, and set properties
+  set smartconnect_hp0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconnect_hp0 ]
+  set_property -dict [ list \
+   CONFIG.NUM_SI {1} \
+ ] $smartconnect_hp0
+
+  # Create instance: smartconnect_hp1, and set properties
+  set smartconnect_hp1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconnect_hp1 ]
+  set_property -dict [ list \
+   CONFIG.NUM_SI {1} \
+ ] $smartconnect_hp1
+
+  # Create instance: smartconnect_hpm0, and set properties
+  set smartconnect_hpm0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconnect_hpm0 ]
+  set_property -dict [ list \
+   CONFIG.NUM_MI {1} \
+   CONFIG.NUM_SI {1} \
+ ] $smartconnect_hpm0
+
+  # Create instance: smartconnect_hpm1, and set properties
+  set smartconnect_hpm1 [ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconnect_hpm1 ]
+  set_property -dict [ list \
+   CONFIG.NUM_MI {2} \
+   CONFIG.NUM_SI {1} \
+ ] $smartconnect_hpm1
+
+  # Create instance: to_live_video
+  create_hier_cell_to_live_video [current_bd_instance .] to_live_video
+
+  # Create instance: v_axi4s_vid_out_0, and set properties
+  set v_axi4s_vid_out_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:v_axi4s_vid_out:4.0 v_axi4s_vid_out_0 ]
+  set_property -dict [ list \
+   CONFIG.C_ADDR_WIDTH {12} \
+   CONFIG.C_HAS_ASYNC_CLK {1} \
+   CONFIG.C_VTG_MASTER_SLAVE {1} \
+ ] $v_axi4s_vid_out_0
+
+  # Create instance: v_tc_0, and set properties
+  set v_tc_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:v_tc:6.1 v_tc_0 ]
+  set_property -dict [ list \
+   CONFIG.GEN_F0_VBLANK_HEND {1920} \
+   CONFIG.GEN_F0_VBLANK_HSTART {1920} \
+   CONFIG.GEN_F0_VFRAME_SIZE {1125} \
+   CONFIG.GEN_F0_VSYNC_HEND {1920} \
+   CONFIG.GEN_F0_VSYNC_HSTART {1920} \
+   CONFIG.GEN_F0_VSYNC_VEND {1088} \
+   CONFIG.GEN_F0_VSYNC_VSTART {1083} \
+   CONFIG.GEN_F1_VBLANK_HEND {1920} \
+   CONFIG.GEN_F1_VBLANK_HSTART {1920} \
+   CONFIG.GEN_F1_VFRAME_SIZE {1125} \
+   CONFIG.GEN_F1_VSYNC_HEND {1920} \
+   CONFIG.GEN_F1_VSYNC_HSTART {1920} \
+   CONFIG.GEN_F1_VSYNC_VEND {1088} \
+   CONFIG.GEN_F1_VSYNC_VSTART {1083} \
+   CONFIG.GEN_HACTIVE_SIZE {1920} \
+   CONFIG.GEN_HFRAME_SIZE {2200} \
+   CONFIG.GEN_HSYNC_END {2052} \
+   CONFIG.GEN_HSYNC_START {2008} \
+   CONFIG.GEN_VACTIVE_SIZE {1080} \
+   CONFIG.VIDEO_MODE {1080p} \
+   CONFIG.enable_detection {false} \
+ ] $v_tc_0
+
+  # Create instance: xlconcat_0, and set properties
+  set xlconcat_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:xlconcat:2.1 xlconcat_0 ]
+  set_property -dict [ list \
+   CONFIG.NUM_PORTS {4} \
+ ] $xlconcat_0
 
   # Create instance: zynq_ultra_ps_e_0, and set properties
   set zynq_ultra_ps_e_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e:3.2 zynq_ultra_ps_e_0 ]
@@ -608,7 +811,7 @@ proc cr_bd_system { parentCell } {
    CONFIG.PSU__PMU__PERIPHERAL__ENABLE {1} \
    CONFIG.PSU__PMU__PLERROR__ENABLE {0} \
    CONFIG.PSU__PRESET_APPLIED {1} \
-   CONFIG.PSU__PROTECTION__MASTERS {USB1:NonSecure;1|USB0:NonSecure;1|S_AXI_LPD:NA;0|S_AXI_HPC1_FPD:NA;0|S_AXI_HPC0_FPD:NA;0|S_AXI_HP3_FPD:NA;0|S_AXI_HP2_FPD:NA;0|S_AXI_HP1_FPD:NA;0|S_AXI_HP0_FPD:NA;0|S_AXI_ACP:NA;0|S_AXI_ACE:NA;0|SD1:NonSecure;1|SD0:NonSecure;1|SATA1:NonSecure;0|SATA0:NonSecure;0|RPU1:Secure;1|RPU0:Secure;1|QSPI:NonSecure;0|PMU:NA;1|PCIe:NonSecure;0|NAND:NonSecure;0|LDMA:NonSecure;1|GPU:NonSecure;1|GEM3:NonSecure;0|GEM2:NonSecure;0|GEM1:NonSecure;0|GEM0:NonSecure;0|FDMA:NonSecure;1|DP:NonSecure;1|DAP:NA;1|Coresight:NA;1|CSU:NA;1|APU:NA;1} \
+   CONFIG.PSU__PROTECTION__MASTERS {USB1:NonSecure;1|USB0:NonSecure;1|S_AXI_LPD:NA;0|S_AXI_HPC1_FPD:NA;0|S_AXI_HPC0_FPD:NA;0|S_AXI_HP3_FPD:NA;0|S_AXI_HP2_FPD:NA;0|S_AXI_HP1_FPD:NA;1|S_AXI_HP0_FPD:NA;1|S_AXI_ACP:NA;0|S_AXI_ACE:NA;0|SD1:NonSecure;1|SD0:NonSecure;1|SATA1:NonSecure;0|SATA0:NonSecure;0|RPU1:Secure;1|RPU0:Secure;1|QSPI:NonSecure;0|PMU:NA;1|PCIe:NonSecure;0|NAND:NonSecure;0|LDMA:NonSecure;1|GPU:NonSecure;1|GEM3:NonSecure;0|GEM2:NonSecure;0|GEM1:NonSecure;0|GEM0:NonSecure;0|FDMA:NonSecure;1|DP:NonSecure;1|DAP:NA;1|Coresight:NA;1|CSU:NA;1|APU:NA;1} \
    CONFIG.PSU__PROTECTION__SLAVES {LPD;USB3_1_XHCI;FE300000;FE3FFFFF;1|LPD;USB3_1;FF9E0000;FF9EFFFF;1|LPD;USB3_0_XHCI;FE200000;FE2FFFFF;1|LPD;USB3_0;FF9D0000;FF9DFFFF;1|LPD;UART1;FF010000;FF01FFFF;1|LPD;UART0;FF000000;FF00FFFF;1|LPD;TTC3;FF140000;FF14FFFF;1|LPD;TTC2;FF130000;FF13FFFF;1|LPD;TTC1;FF120000;FF12FFFF;1|LPD;TTC0;FF110000;FF11FFFF;1|FPD;SWDT1;FD4D0000;FD4DFFFF;1|LPD;SWDT0;FF150000;FF15FFFF;1|LPD;SPI1;FF050000;FF05FFFF;1|LPD;SPI0;FF040000;FF04FFFF;1|FPD;SMMU_REG;FD5F0000;FD5FFFFF;1|FPD;SMMU;FD800000;FDFFFFFF;1|FPD;SIOU;FD3D0000;FD3DFFFF;1|FPD;SERDES;FD400000;FD47FFFF;1|LPD;SD1;FF170000;FF17FFFF;1|LPD;SD0;FF160000;FF16FFFF;1|FPD;SATA;FD0C0000;FD0CFFFF;0|LPD;RTC;FFA60000;FFA6FFFF;1|LPD;RSA_CORE;FFCE0000;FFCEFFFF;1|LPD;RPU;FF9A0000;FF9AFFFF;1|FPD;RCPU_GIC;F9000000;F900FFFF;1|LPD;R5_TCM_RAM_GLOBAL;FFE00000;FFE3FFFF;1|LPD;R5_1_Instruction_Cache;FFEC0000;FFECFFFF;1|LPD;R5_1_Data_Cache;FFED0000;FFEDFFFF;1|LPD;R5_1_BTCM_GLOBAL;FFEB0000;FFEBFFFF;1|LPD;R5_1_ATCM_GLOBAL;FFE90000;FFE9FFFF;1|LPD;R5_0_Instruction_Cache;FFE40000;FFE4FFFF;1|LPD;R5_0_Data_Cache;FFE50000;FFE5FFFF;1|LPD;R5_0_BTCM_GLOBAL;FFE20000;FFE2FFFF;1|LPD;R5_0_ATCM_GLOBAL;FFE00000;FFE0FFFF;1|LPD;QSPI_Linear_Address;C0000000;DFFFFFFF;1|LPD;QSPI;FF0F0000;FF0FFFFF;0|LPD;PMU_RAM;FFDC0000;FFDDFFFF;1|LPD;PMU_GLOBAL;FFD80000;FFDBFFFF;1|FPD;PCIE_MAIN;FD0E0000;FD0EFFFF;0|FPD;PCIE_LOW;E0000000;EFFFFFFF;0|FPD;PCIE_HIGH2;8000000000;BFFFFFFFFF;0|FPD;PCIE_HIGH1;600000000;7FFFFFFFF;0|FPD;PCIE_DMA;FD0F0000;FD0FFFFF;0|FPD;PCIE_ATTRIB;FD480000;FD48FFFF;0|LPD;OCM_XMPU_CFG;FFA70000;FFA7FFFF;1|LPD;OCM_SLCR;FF960000;FF96FFFF;1|OCM;OCM;FFFC0000;FFFFFFFF;1|LPD;NAND;FF100000;FF10FFFF;0|LPD;MBISTJTAG;FFCF0000;FFCFFFFF;1|LPD;LPD_XPPU_SINK;FF9C0000;FF9CFFFF;1|LPD;LPD_XPPU;FF980000;FF98FFFF;1|LPD;LPD_SLCR_SECURE;FF4B0000;FF4DFFFF;1|LPD;LPD_SLCR;FF410000;FF4AFFFF;1|LPD;LPD_GPV;FE100000;FE1FFFFF;1|LPD;LPD_DMA_7;FFAF0000;FFAFFFFF;1|LPD;LPD_DMA_6;FFAE0000;FFAEFFFF;1|LPD;LPD_DMA_5;FFAD0000;FFADFFFF;1|LPD;LPD_DMA_4;FFAC0000;FFACFFFF;1|LPD;LPD_DMA_3;FFAB0000;FFABFFFF;1|LPD;LPD_DMA_2;FFAA0000;FFAAFFFF;1|LPD;LPD_DMA_1;FFA90000;FFA9FFFF;1|LPD;LPD_DMA_0;FFA80000;FFA8FFFF;1|LPD;IPI_CTRL;FF380000;FF3FFFFF;1|LPD;IOU_SLCR;FF180000;FF23FFFF;1|LPD;IOU_SECURE_SLCR;FF240000;FF24FFFF;1|LPD;IOU_SCNTRS;FF260000;FF26FFFF;1|LPD;IOU_SCNTR;FF250000;FF25FFFF;1|LPD;IOU_GPV;FE000000;FE0FFFFF;1|LPD;I2C1;FF030000;FF03FFFF;1|LPD;I2C0;FF020000;FF02FFFF;0|FPD;GPU;FD4B0000;FD4BFFFF;1|LPD;GPIO;FF0A0000;FF0AFFFF;1|LPD;GEM3;FF0E0000;FF0EFFFF;0|LPD;GEM2;FF0D0000;FF0DFFFF;0|LPD;GEM1;FF0C0000;FF0CFFFF;0|LPD;GEM0;FF0B0000;FF0BFFFF;0|FPD;FPD_XMPU_SINK;FD4F0000;FD4FFFFF;1|FPD;FPD_XMPU_CFG;FD5D0000;FD5DFFFF;1|FPD;FPD_SLCR_SECURE;FD690000;FD6CFFFF;1|FPD;FPD_SLCR;FD610000;FD68FFFF;1|FPD;FPD_GPV;FD700000;FD7FFFFF;1|FPD;FPD_DMA_CH7;FD570000;FD57FFFF;1|FPD;FPD_DMA_CH6;FD560000;FD56FFFF;1|FPD;FPD_DMA_CH5;FD550000;FD55FFFF;1|FPD;FPD_DMA_CH4;FD540000;FD54FFFF;1|FPD;FPD_DMA_CH3;FD530000;FD53FFFF;1|FPD;FPD_DMA_CH2;FD520000;FD52FFFF;1|FPD;FPD_DMA_CH1;FD510000;FD51FFFF;1|FPD;FPD_DMA_CH0;FD500000;FD50FFFF;1|LPD;EFUSE;FFCC0000;FFCCFFFF;1|FPD;Display Port;FD4A0000;FD4AFFFF;1|FPD;DPDMA;FD4C0000;FD4CFFFF;1|FPD;DDR_XMPU5_CFG;FD050000;FD05FFFF;1|FPD;DDR_XMPU4_CFG;FD040000;FD04FFFF;1|FPD;DDR_XMPU3_CFG;FD030000;FD03FFFF;1|FPD;DDR_XMPU2_CFG;FD020000;FD02FFFF;1|FPD;DDR_XMPU1_CFG;FD010000;FD01FFFF;1|FPD;DDR_XMPU0_CFG;FD000000;FD00FFFF;1|FPD;DDR_QOS_CTRL;FD090000;FD09FFFF;1|FPD;DDR_PHY;FD080000;FD08FFFF;1|DDR;DDR_LOW;0;7FFFFFFF;1|DDR;DDR_HIGH;800000000;800000000;0|FPD;DDDR_CTRL;FD070000;FD070FFF;1|LPD;Coresight;FE800000;FEFFFFFF;1|LPD;CSU_DMA;FFC80000;FFC9FFFF;1|LPD;CSU;FFCA0000;FFCAFFFF;0|LPD;CRL_APB;FF5E0000;FF85FFFF;1|FPD;CRF_APB;FD1A0000;FD2DFFFF;1|FPD;CCI_REG;FD5E0000;FD5EFFFF;1|FPD;CCI_GPV;FD6E0000;FD6EFFFF;1|LPD;CAN1;FF070000;FF07FFFF;0|LPD;CAN0;FF060000;FF06FFFF;0|FPD;APU;FD5C0000;FD5CFFFF;1|LPD;APM_INTC_IOU;FFA20000;FFA2FFFF;1|LPD;APM_FPD_LPD;FFA30000;FFA3FFFF;1|FPD;APM_5;FD490000;FD49FFFF;1|FPD;APM_0;FD0B0000;FD0BFFFF;1|LPD;APM2;FFA10000;FFA1FFFF;1|LPD;APM1;FFA00000;FFA0FFFF;1|LPD;AMS;FFA50000;FFA5FFFF;1|FPD;AFI_5;FD3B0000;FD3BFFFF;1|FPD;AFI_4;FD3A0000;FD3AFFFF;1|FPD;AFI_3;FD390000;FD39FFFF;1|FPD;AFI_2;FD380000;FD38FFFF;1|FPD;AFI_1;FD370000;FD37FFFF;1|FPD;AFI_0;FD360000;FD36FFFF;1|LPD;AFIFM6;FF9B0000;FF9BFFFF;1|FPD;ACPU_GIC;F9010000;F907FFFF;1} \
    CONFIG.PSU__PSS_REF_CLK__FREQMHZ {33.333333} \
    CONFIG.PSU__QSPI_COHERENCY {0} \
@@ -617,6 +820,8 @@ proc cr_bd_system { parentCell } {
    CONFIG.PSU__SATA__LANE0__ENABLE {0} \
    CONFIG.PSU__SATA__LANE1__ENABLE {0} \
    CONFIG.PSU__SATA__PERIPHERAL__ENABLE {0} \
+   CONFIG.PSU__SAXIGP2__DATA_WIDTH {128} \
+   CONFIG.PSU__SAXIGP3__DATA_WIDTH {128} \
    CONFIG.PSU__SD0_COHERENCY {0} \
    CONFIG.PSU__SD0__DATA_TRANSFER_MODE {4Bit} \
    CONFIG.PSU__SD0__GRP_CD__ENABLE {1} \
@@ -701,15 +906,112 @@ proc cr_bd_system { parentCell } {
    CONFIG.PSU__USE__M_AXI_GP0 {1} \
    CONFIG.PSU__USE__M_AXI_GP1 {1} \
    CONFIG.PSU__USE__M_AXI_GP2 {0} \
+   CONFIG.PSU__USE__S_AXI_GP2 {1} \
+   CONFIG.PSU__USE__S_AXI_GP3 {1} \
+   CONFIG.PSU__USE__VIDEO {1} \
    CONFIG.SUBPRESET1 {Custom} \
  ] $zynq_ultra_ps_e_0
 
+  # Create interface connections
+  connect_bd_intf_net -intf_net axi_vdma_0_M_AXIS_MM2S [get_bd_intf_pins axi_vdma_0/M_AXIS_MM2S] [get_bd_intf_pins v_axi4s_vid_out_0/video_in]
+  connect_bd_intf_net -intf_net axi_vdma_0_M_AXI_MM2S [get_bd_intf_pins axi_vdma_0/M_AXI_MM2S] [get_bd_intf_pins smartconnect_hp1/S00_AXI]
+  connect_bd_intf_net -intf_net axi_vdma_0_M_AXI_S2MM [get_bd_intf_pins axi_vdma_0/M_AXI_S2MM] [get_bd_intf_pins smartconnect_hp0/S00_AXI]
+  connect_bd_intf_net -intf_net axis_clock_converter_0_M_AXIS [get_bd_intf_pins axi_vdma_0/S_AXIS_S2MM] [get_bd_intf_pins axis_clock_converter_0/M_AXIS]
+  connect_bd_intf_net -intf_net fractal_0_m_axis [get_bd_intf_pins axis_clock_converter_0/S_AXIS] [get_bd_intf_pins fractal_0/m_axis]
+  connect_bd_intf_net -intf_net smartconnect_hp0_M00_AXI [get_bd_intf_pins smartconnect_hp0/M00_AXI] [get_bd_intf_pins zynq_ultra_ps_e_0/S_AXI_HP0_FPD]
+  connect_bd_intf_net -intf_net smartconnect_hp1_M00_AXI [get_bd_intf_pins smartconnect_hp1/M00_AXI] [get_bd_intf_pins zynq_ultra_ps_e_0/S_AXI_HP1_FPD]
+  connect_bd_intf_net -intf_net smartconnect_hpm0_M00_AXI [get_bd_intf_pins fractal_0/s_axi_AXILiteS] [get_bd_intf_pins smartconnect_hpm0/M00_AXI]
+  connect_bd_intf_net -intf_net smartconnect_hpm1_M00_AXI [get_bd_intf_pins axi_vdma_0/S_AXI_LITE] [get_bd_intf_pins smartconnect_hpm1/M00_AXI]
+  connect_bd_intf_net -intf_net smartconnect_hpm1_M01_AXI [get_bd_intf_pins smartconnect_hpm1/M01_AXI] [get_bd_intf_pins v_tc_0/ctrl]
+  connect_bd_intf_net -intf_net v_tc_0_vtiming_out [get_bd_intf_pins v_axi4s_vid_out_0/vtiming_in] [get_bd_intf_pins v_tc_0/vtiming_out]
+  connect_bd_intf_net -intf_net zynq_ultra_ps_e_0_M_AXI_HPM0_FPD [get_bd_intf_pins smartconnect_hpm0/S00_AXI] [get_bd_intf_pins zynq_ultra_ps_e_0/M_AXI_HPM0_FPD]
+  connect_bd_intf_net -intf_net zynq_ultra_ps_e_0_M_AXI_HPM1_FPD [get_bd_intf_pins smartconnect_hpm1/S00_AXI] [get_bd_intf_pins zynq_ultra_ps_e_0/M_AXI_HPM1_FPD]
+
   # Create port connections
-  connect_bd_net -net Net [get_bd_pins clk_wiz_0/clk_out1] [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_fpd_aclk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm1_fpd_aclk]
+  connect_bd_net -net Net [get_bd_pins axis_clock_converter_0/s_axis_aclk] [get_bd_pins clk_wiz_0/clk_out1] [get_bd_pins fractal_0/ap_clk] [get_bd_pins rst_clk_wiz_0_125M/slowest_sync_clk] [get_bd_pins smartconnect_hpm0/aclk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_fpd_aclk]
+  connect_bd_net -net axi_vdma_0_mm2s_introut [get_bd_pins axi_vdma_0/mm2s_introut] [get_bd_pins xlconcat_0/In2]
+  connect_bd_net -net axi_vdma_0_s2mm_introut [get_bd_pins axi_vdma_0/s2mm_introut] [get_bd_pins xlconcat_0/In3]
+  connect_bd_net -net clk_wiz_0_clk_out2 [get_bd_pins axi_vdma_0/m_axi_mm2s_aclk] [get_bd_pins axi_vdma_0/m_axi_s2mm_aclk] [get_bd_pins axi_vdma_0/m_axis_mm2s_aclk] [get_bd_pins axi_vdma_0/s_axi_lite_aclk] [get_bd_pins axi_vdma_0/s_axis_s2mm_aclk] [get_bd_pins axis_clock_converter_0/m_axis_aclk] [get_bd_pins clk_wiz_0/clk_out2] [get_bd_pins rst_clk_wiz_0_150M/slowest_sync_clk] [get_bd_pins smartconnect_hp0/aclk] [get_bd_pins smartconnect_hp1/aclk] [get_bd_pins smartconnect_hpm1/aclk] [get_bd_pins v_axi4s_vid_out_0/aclk] [get_bd_pins v_tc_0/s_axi_aclk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm1_fpd_aclk] [get_bd_pins zynq_ultra_ps_e_0/saxihp0_fpd_aclk] [get_bd_pins zynq_ultra_ps_e_0/saxihp1_fpd_aclk]
+  connect_bd_net -net clk_wiz_0_locked [get_bd_pins clk_wiz_0/locked] [get_bd_pins rst_clk_wiz_0_125M/dcm_locked] [get_bd_pins rst_clk_wiz_0_150M/dcm_locked]
+  connect_bd_net -net fractal_0_interrupt [get_bd_pins fractal_0/interrupt] [get_bd_pins xlconcat_0/In0]
+  connect_bd_net -net rst_clk_wiz_0_125M_peripheral_aresetn [get_bd_pins axis_clock_converter_0/s_axis_aresetn] [get_bd_pins fractal_0/ap_rst_n] [get_bd_pins rst_clk_wiz_0_125M/peripheral_aresetn] [get_bd_pins smartconnect_hpm0/aresetn]
+  connect_bd_net -net rst_clk_wiz_0_150M_peripheral_aresetn [get_bd_pins axi_vdma_0/axi_resetn] [get_bd_pins axis_clock_converter_0/m_axis_aresetn] [get_bd_pins rst_clk_wiz_0_150M/peripheral_aresetn] [get_bd_pins smartconnect_hp0/aresetn] [get_bd_pins smartconnect_hp1/aresetn] [get_bd_pins smartconnect_hpm1/aresetn] [get_bd_pins v_axi4s_vid_out_0/aresetn] [get_bd_pins v_tc_0/s_axi_aresetn]
+  connect_bd_net -net to_live_video_dout [get_bd_pins to_live_video/dout] [get_bd_pins zynq_ultra_ps_e_0/dp_live_video_in_pixel1]
+  connect_bd_net -net v_axi4s_vid_out_0_vid_active_video [get_bd_pins v_axi4s_vid_out_0/vid_active_video] [get_bd_pins zynq_ultra_ps_e_0/dp_live_video_in_de]
+  connect_bd_net -net v_axi4s_vid_out_0_vid_data [get_bd_pins to_live_video/Din] [get_bd_pins v_axi4s_vid_out_0/vid_data]
+  connect_bd_net -net v_axi4s_vid_out_0_vid_hsync [get_bd_pins v_axi4s_vid_out_0/vid_hsync] [get_bd_pins zynq_ultra_ps_e_0/dp_live_video_in_hsync]
+  connect_bd_net -net v_axi4s_vid_out_0_vid_vsync [get_bd_pins v_axi4s_vid_out_0/vid_vsync] [get_bd_pins zynq_ultra_ps_e_0/dp_live_video_in_vsync]
+  connect_bd_net -net v_axi4s_vid_out_0_vtg_ce [get_bd_pins v_axi4s_vid_out_0/vtg_ce] [get_bd_pins v_tc_0/gen_clken]
+  connect_bd_net -net v_tc_0_irq [get_bd_pins v_tc_0/irq] [get_bd_pins xlconcat_0/In1]
+  connect_bd_net -net xlconcat_0_dout [get_bd_pins xlconcat_0/dout] [get_bd_pins zynq_ultra_ps_e_0/pl_ps_irq0]
+  connect_bd_net -net zynq_ultra_ps_e_0_dp_video_ref_clk [get_bd_pins v_axi4s_vid_out_0/vid_io_out_clk] [get_bd_pins v_tc_0/clk] [get_bd_pins zynq_ultra_ps_e_0/dp_video_in_clk] [get_bd_pins zynq_ultra_ps_e_0/dp_video_ref_clk]
   connect_bd_net -net zynq_ultra_ps_e_0_pl_clk0 [get_bd_pins clk_wiz_0/clk_in1] [get_bd_pins zynq_ultra_ps_e_0/pl_clk0]
+  connect_bd_net -net zynq_ultra_ps_e_0_pl_resetn0 [get_bd_pins rst_clk_wiz_0_125M/ext_reset_in] [get_bd_pins rst_clk_wiz_0_150M/ext_reset_in] [get_bd_pins zynq_ultra_ps_e_0/pl_resetn0]
 
   # Create address segments
+  create_bd_addr_seg -range 0x80000000 -offset 0x00000000 [get_bd_addr_spaces axi_vdma_0/Data_S2MM] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP2/HP0_DDR_LOW] SEG_zynq_ultra_ps_e_0_HP0_DDR_LOW
+  create_bd_addr_seg -range 0x01000000 -offset 0xFF000000 [get_bd_addr_spaces axi_vdma_0/Data_S2MM] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP2/HP0_LPS_OCM] SEG_zynq_ultra_ps_e_0_HP0_LPS_OCM
+  create_bd_addr_seg -range 0x80000000 -offset 0x00000000 [get_bd_addr_spaces axi_vdma_0/Data_MM2S] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP3/HP1_DDR_LOW] SEG_zynq_ultra_ps_e_0_HP1_DDR_LOW
+  create_bd_addr_seg -range 0x01000000 -offset 0xFF000000 [get_bd_addr_spaces axi_vdma_0/Data_MM2S] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP3/HP1_LPS_OCM] SEG_zynq_ultra_ps_e_0_HP1_LPS_OCM
+  create_bd_addr_seg -range 0x00001000 -offset 0xB0000000 [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs axi_vdma_0/S_AXI_LITE/Reg] SEG_axi_vdma_0_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0xA0000000 [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs fractal_0/s_axi_AXILiteS/Reg] SEG_fractal_0_Reg
+  create_bd_addr_seg -range 0x00010000 -offset 0xB0010000 [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs v_tc_0/ctrl/Reg] SEG_v_tc_0_Reg
 
+  # Perform GUI Layout
+  regenerate_bd_layout -layout_string {
+   "ExpandedHierarchyInLayout":"",
+   "guistr":"# # String gsaved with Nlview 6.8.11  2018-08-07 bk=1.4403 VDI=40 GEI=35 GUI=JA:9.0 TLS
+#  -string -flagsOSRD
+preplace inst v_axi4s_vid_out_0 -pg 1 -lvl 7 -y 280 -defaultsOSRD
+preplace inst axi_vdma_0 -pg 1 -lvl 6 -y 220 -defaultsOSRD
+preplace inst v_tc_0 -pg 1 -lvl 6 -y 470 -defaultsOSRD
+preplace inst zynq_ultra_ps_e_0 -pg 1 -lvl 2 -y 320 -defaultsOSRD
+preplace inst rst_clk_wiz_0_125M -pg 1 -lvl 2 -y 620 -defaultsOSRD
+preplace inst to_live_video -pg 1 -lvl 8 -y 220 -defaultsOSRD
+preplace inst smartconnect_hp0 -pg 1 -lvl 1 -y 110 -defaultsOSRD
+preplace inst axis_clock_converter_0 -pg 1 -lvl 5 -y 260 -defaultsOSRD
+preplace inst smartconnect_hp1 -pg 1 -lvl 1 -y 250 -defaultsOSRD
+preplace inst xlconcat_0 -pg 1 -lvl 1 -y 680 -defaultsOSRD
+preplace inst fractal_0 -pg 1 -lvl 4 -y 230 -defaultsOSRD
+preplace inst smartconnect_hpm0 -pg 1 -lvl 3 -y 210 -defaultsOSRD
+preplace inst smartconnect_hpm1 -pg 1 -lvl 3 -y 380 -defaultsOSRD
+preplace inst clk_wiz_0 -pg 1 -lvl 1 -y 830 -defaultsOSRD
+preplace inst rst_clk_wiz_0_150M -pg 1 -lvl 2 -y 800 -defaultsOSRD
+preplace netloc to_live_video_dout 1 1 8 450 910 NJ 910 NJ 910 NJ 910 N 910 N 910 N 910 3200
+preplace netloc v_axi4s_vid_out_0_vid_data 1 7 1 N
+preplace netloc rst_clk_wiz_0_125M_peripheral_aresetn 1 2 3 1230 290 1530 310 1860
+preplace netloc axi_vdma_0_s2mm_introut 1 0 7 40J 940 NJ 940 NJ 940 NJ 940 NJ 940 N 940 2560
+preplace netloc clk_wiz_0_locked 1 1 1 420
+preplace netloc zynq_ultra_ps_e_0_dp_video_ref_clk 1 1 6 440 50 1190 90 N 90 NJ 90 2160J 50 2630J
+preplace netloc smartconnect_hpm0_M00_AXI 1 3 1 N
+preplace netloc v_axi4s_vid_out_0_vid_hsync 1 1 7 430 40 NJ 40 NJ 40 NJ 40 N 40 N 40 2970
+preplace netloc zynq_ultra_ps_e_0_pl_clk0 1 0 3 20J 350 370J 100 1170
+preplace netloc axi_vdma_0_M_AXI_MM2S 1 0 7 20 10 N 10 N 10 N 10 N 10 N 10 2600
+preplace netloc smartconnect_hp0_M00_AXI 1 1 1 380
+preplace netloc rst_clk_wiz_0_150M_peripheral_aresetn 1 0 7 30 30 N 30 1210 300 1510 320 1880 360 2150 60 2620
+preplace netloc zynq_ultra_ps_e_0_M_AXI_HPM0_FPD 1 2 1 1200
+preplace netloc axi_vdma_0_M_AXIS_MM2S 1 6 1 N
+preplace netloc v_tc_0_irq 1 0 7 40J 360 350J 80 NJ 80 NJ 80 N 80 N 80 2580
+preplace netloc smartconnect_hpm1_M01_AXI 1 3 3 NJ 390 NJ 390 N
+preplace netloc axis_clock_converter_0_M_AXIS 1 5 1 2170
+preplace netloc v_axi4s_vid_out_0_vid_active_video 1 1 7 430 950 NJ 950 NJ 950 NJ 950 N 950 N 950 2980
+preplace netloc v_axi4s_vid_out_0_vtg_ce 1 5 3 2170 610 N 610 2960
+preplace netloc xlconcat_0_dout 1 1 1 400
+preplace netloc axi_vdma_0_mm2s_introut 1 0 7 30J 930 NJ 930 NJ 930 NJ 930 NJ 930 N 930 2570
+preplace netloc clk_wiz_0_clk_out2 1 0 7 40 330 390 90 1180 460 1520 380 1890 380 2180 90 2610
+preplace netloc zynq_ultra_ps_e_0_pl_resetn0 1 1 2 460 920 1160
+preplace netloc fractal_0_interrupt 1 0 5 30J 340 340J 60 NJ 60 NJ 60 1850
+preplace netloc smartconnect_hpm1_M00_AXI 1 3 3 1520 150 NJ 150 NJ
+preplace netloc zynq_ultra_ps_e_0_M_AXI_HPM1_FPD 1 2 1 1200
+preplace netloc Net 1 1 4 410 900 1220 130 1530 140 1870J
+preplace netloc v_tc_0_vtiming_out 1 6 1 2640
+preplace netloc axi_vdma_0_M_AXI_S2MM 1 0 7 40 20 N 20 N 20 N 20 N 20 N 20 2590
+preplace netloc v_axi4s_vid_out_0_vid_vsync 1 1 7 450 70 NJ 70 NJ 70 NJ 70 N 70 N 70 2960
+preplace netloc smartconnect_hp1_M00_AXI 1 1 1 360
+preplace netloc fractal_0_m_axis 1 4 1 N
+levelinfo -pg 1 0 200 810 1370 1690 2020 2370 2800 3090 3220 -top 0 -bot 960
+"
+}
 
   # Restore current instance
   current_bd_instance $oldCurInst
