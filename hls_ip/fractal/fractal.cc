@@ -12,20 +12,22 @@ std::complex<fix64_type> initialize_z(std::uint32_t x, std::uint32_t y, fix64_ty
   return std::complex<fix64_type>{-x1 + dx * x + offset_x, -y1 + dy * y + offset_y};
 }
 
-bool finished(std::complex<fix64_type> z) {
-#pragma HLS INLINE
-  return z.real() * z.real() + z.imag() * z.imag() > fix64_type{4.0};
-}
-
 template <std::uint8_t Iter>
 void evaluate(std::uint8_t i0, std::complex<fix64_type> c, std::complex<fix64_type> z0,
               std::uint8_t& i, std::complex<fix64_type>& z) {
+#pragma HLS ALLOCATION instances=add limit=2 operation
 #pragma HLS ALLOCATION instances=mul limit=2 operation
   i = i0;
   z = z0;
 loop_evaluate:
-  for (std::uint8_t t = 0; t < Iter && !finished(z); ++t) {
-    z = z * z + c;
+  for (std::uint8_t t = 0; t < Iter; ++t) {
+    const auto zr2 = z.real() * z.real();
+    const auto zi2 = z.imag() * z.imag();
+    const auto zri = z.real() * z.imag();
+    if (zr2 + zi2 > fix64_type{4.0}) {
+      break;
+    }
+    z = std::complex<fix64_type>{zr2 - zi2 + c.real(), zri + zri + c.imag()};
     i = i + 1;
   }
 }
