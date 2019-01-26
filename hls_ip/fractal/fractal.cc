@@ -12,26 +12,6 @@ std::complex<fix64_type> initialize_z(std::uint32_t x, std::uint32_t y, fix64_ty
   return std::complex<fix64_type>{-x1 + dx * x + offset_x, -y1 + dy * y + offset_y};
 }
 
-template <std::uint8_t Iter>
-void evaluate(std::uint8_t i0, std::complex<fix64_type> c, std::complex<fix64_type> z0,
-              std::uint8_t& i, std::complex<fix64_type>& z) {
-#pragma HLS ALLOCATION instances=add limit=2 operation
-#pragma HLS ALLOCATION instances=mul limit=2 operation
-  i = i0;
-  z = z0;
-loop_evaluate:
-  for (std::uint8_t t = 0; t < Iter; ++t) {
-    const auto zr2 = z.real() * z.real();
-    const auto zi2 = z.imag() * z.imag();
-    const auto zri = z.real() * z.imag();
-    if (zr2 + zi2 > fix64_type{4.0}) {
-      break;
-    }
-    z = std::complex<fix64_type>{zr2 - zi2 + c.real(), zri + zri + c.imag()};
-    i = i + 1;
-  }
-}
-
 video_type pack(std::uint32_t x, std::uint32_t y, std::uint8_t i) {
   auto p = video_type{};
   p.data = uint24_type{color_table[i]};
@@ -42,6 +22,9 @@ video_type pack(std::uint32_t x, std::uint32_t y, std::uint8_t i) {
 }
 
 void fractal(stream_type& m_axis) {
+#pragma HLS ALLOCATION instances=sub limit=8 operation
+#pragma HLS ALLOCATION instances=add limit=48 operation
+#pragma HLS ALLOCATION instances=mul limit=24 operation
 #pragma HLS INTERFACE axis register both port=m_axis
 #pragma HLS INTERFACE s_axilite port=return
 
@@ -58,24 +41,48 @@ void fractal(stream_type& m_axis) {
 loop_height:
   for (std::uint32_t y = 0; y < MAX_HEIGHT; y++) {
   loop_width:
-    for (std::uint32_t x = 0; x < MAX_WIDTH; x++) {
-#pragma HLS DATAFLOW
-      const auto z0 = initialize_z(x, y, x1, y1, dx, dy, offset_x, offset_y);
+    for (std::uint32_t x = 0; x < MAX_WIDTH; x += UNROLL_FACTOR) {
+      std::uint8_t i[UNROLL_FACTOR];
+#pragma HLS ARRAY_PARTITION variable=i complete dim=1
+      std::complex<fix64_type> z[UNROLL_FACTOR];
+#pragma HLS ARRAY_PARTITION variable=z complete dim=1
+      bool d[UNROLL_FACTOR];
+#pragma HLS ARRAY_PARTITION variable=d complete dim=1
 
-      std::uint8_t i1, i2, i3, i4, i5, i6, i7, i8;
-      std::complex<fix64_type> z1, z2, z3, z4, z5, z6, z7, z8;
-      evaluate<(MAX_ITERATIONS + 1) / 8    >(0u, c, z0, i1, z1);
-      evaluate<(MAX_ITERATIONS + 1) / 8    >(i1, c, z1, i2, z2);
-      evaluate<(MAX_ITERATIONS + 1) / 8    >(i2, c, z2, i3, z3);
-      evaluate<(MAX_ITERATIONS + 1) / 8    >(i3, c, z3, i4, z4);
-      evaluate<(MAX_ITERATIONS + 1) / 8    >(i4, c, z4, i5, z5);
-      evaluate<(MAX_ITERATIONS + 1) / 8    >(i5, c, z5, i6, z6);
-      evaluate<(MAX_ITERATIONS + 1) / 8    >(i6, c, z6, i7, z7);
-      evaluate<(MAX_ITERATIONS + 1) / 8 - 1>(i7, c, z7, i8, z8);
+    loop1:
+      for (std::uint32_t w = 0; w < UNROLL_FACTOR; w++) {
+#pragma HLS PIPELINE II=1
+        i[w] = 0u;
+        z[w] = initialize_z(x + w, y, x1, y1, dx, dy, offset_x, offset_y);
+        d[w] = false;
+      }
 
-      const auto v = pack(x, y, i8);
+    loop2:
+      for (std::uint8_t t = 0; t < MAX_ITERATIONS; ++t) {
+#pragma HLS PIPELINE II=5
+      loop2_1:
+        for (std::uint32_t w = 0; w < UNROLL_FACTOR; w++) {
+          const auto zr2 = z[w].real() * z[w].real();
+          const auto zi2 = z[w].imag() * z[w].imag();
+          const auto zri = z[w].real() * z[w].imag();
 
-      m_axis << v;
+          d[w] = d[w] || (zr2 + zi2 > fix64_type{4.0});
+          z[w] = d[w] ? z[w]
+                      : std::complex<fix64_type>{zr2 - zi2 + c.real(), zri + zri + c.imag()};
+          i[w] = d[w] ? i[w] : i[w] + 1;
+        }
+
+        bool b = d[0];
+      loop2_2:
+        for (std::uint32_t w = 1; w < UNROLL_FACTOR; w++) b = b && d[w];
+        if (b) break;
+      }
+
+    loop3:
+      for (std::uint32_t w = 0; w < UNROLL_FACTOR; w++) {
+#pragma HLS PIPELINE II=1
+        m_axis << pack(x, y, i[w]);
+      }
     }
   }
 }

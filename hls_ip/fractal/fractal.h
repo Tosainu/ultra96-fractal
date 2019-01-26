@@ -10,6 +10,7 @@
 
 static constexpr std::uint32_t MAX_WIDTH     = 1920u;
 static constexpr std::uint32_t MAX_HEIGHT    = 1080u;
+static constexpr std::uint32_t UNROLL_FACTOR = 32u;
 static constexpr std::uint8_t MAX_ITERATIONS = 255u;
 
 using video_type  = ap_axiu<24, 1, 1, 1>;
