@@ -81,7 +81,7 @@ loop_height:
     loop3:
       for (std::uint32_t w = 0; w < UNROLL_FACTOR; w++) {
 #pragma HLS PIPELINE II=1
-        m_axis << pack(x, y, i[w]);
+        m_axis << pack(x + w, y, i[w]);
       }
     }
   }
