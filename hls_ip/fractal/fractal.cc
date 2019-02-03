@@ -9,10 +9,12 @@ static constexpr auto color_table = make_color_table();
 std::complex<fix64_type> initialize_z(std::uint32_t x, std::uint32_t y, fix64_type x1,
                                       fix64_type y1, fix64_type dx, fix64_type dy,
                                       fix64_type offset_x, fix64_type offset_y) {
+#pragma HLS INLINE
   return std::complex<fix64_type>{-x1 + dx * x + offset_x, -y1 + dy * y + offset_y};
 }
 
 video_type pack(std::uint32_t x, std::uint32_t y, std::uint8_t i) {
+#pragma HLS INLINE
   auto p = video_type{};
   p.data = uint24_type{color_table[i]};
   p.user = x == 0 && y == 0;   // Start-of-Frame
@@ -51,7 +53,7 @@ loop_height:
 
     loop1:
       for (std::uint32_t w = 0; w < UNROLL_FACTOR; w++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS UNROLL skip_exit_check
         i[w] = 0u;
         z[w] = initialize_z(x + w, y, x1, y1, dx, dy, offset_x, offset_y);
         d[w] = false;
@@ -59,7 +61,7 @@ loop_height:
 
     loop2:
       for (std::uint8_t t = 0; t < MAX_ITERATIONS; ++t) {
-#pragma HLS PIPELINE II=5
+#pragma HLS PIPELINE II=2
       loop2_1:
         for (std::uint32_t w = 0; w < UNROLL_FACTOR; w++) {
           const auto zr2 = z[w].real() * z[w].real();
@@ -71,16 +73,11 @@ loop_height:
                       : std::complex<fix64_type>{zr2 - zi2 + c.real(), zri + zri + c.imag()};
           i[w] = d[w] ? i[w] : i[w] + 1;
         }
-
-        bool b = d[0];
-      loop2_2:
-        for (std::uint32_t w = 1; w < UNROLL_FACTOR; w++) b = b && d[w];
-        if (b) break;
       }
 
     loop3:
       for (std::uint32_t w = 0; w < UNROLL_FACTOR; w++) {
-#pragma HLS PIPELINE II=1
+#pragma HLS UNROLL skip_exit_check
         m_axis << pack(x + w, y, i[w]);
       }
     }
