@@ -19,6 +19,7 @@ using uint8_type  = ap_uint<8>;
 using uint24_type = ap_uint<24>;
 using fix64_type  = ap_fixed<64, 12>;
 
-void fractal(stream_type& m_axis);
+void fractal(fix64_type x1, fix64_type y1, fix64_type dx, fix64_type dy, fix64_type offset_x,
+             fix64_type offset_y, fix64_type cr, fix64_type ci, stream_type& m_axis);
 
 #endif // FRACTAL_H

@@ -23,22 +23,23 @@ video_type pack(std::uint32_t x, std::uint32_t y, std::uint8_t i) {
   return p;
 }
 
-void fractal(stream_type& m_axis) {
+void fractal(fix64_type x1, fix64_type y1, fix64_type dx, fix64_type dy, fix64_type offset_x,
+             fix64_type offset_y, fix64_type cr, fix64_type ci, stream_type& m_axis) {
 #pragma HLS ALLOCATION instances=sub limit=8 operation
 #pragma HLS ALLOCATION instances=add limit=48 operation
 #pragma HLS ALLOCATION instances=mul limit=24 operation
+#pragma HLS INTERFACE s_axilite port=x1
+#pragma HLS INTERFACE s_axilite port=y1
+#pragma HLS INTERFACE s_axilite port=dx
+#pragma HLS INTERFACE s_axilite port=dy
+#pragma HLS INTERFACE s_axilite port=offset_x
+#pragma HLS INTERFACE s_axilite port=offset_y
+#pragma HLS INTERFACE s_axilite port=cr
+#pragma HLS INTERFACE s_axilite port=ci
 #pragma HLS INTERFACE axis register both port=m_axis
 #pragma HLS INTERFACE s_axilite port=return
 
-  const auto x1 = fix64_type{1.0};
-  const auto y1 = fix64_type{MAX_HEIGHT} / fix64_type{MAX_WIDTH};
-  const auto dx = fix64_type{2.0} * x1 / fix64_type{MAX_WIDTH};
-  const auto dy = fix64_type{2.0} * y1 / fix64_type{MAX_HEIGHT};
-
-  const auto offset_x = fix64_type{0};
-  const auto offset_y = fix64_type{0};
-
-  const auto c = std::complex<fix64_type>{-0.4, 0.6};
+  const auto c = std::complex<fix64_type>{cr, ci};
 
 loop_height:
   for (std::uint32_t y = 0; y < MAX_HEIGHT; y++) {
