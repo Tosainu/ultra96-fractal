@@ -182,7 +182,7 @@ proc create_hier_cell_to_live_video { parentCell nameHier } {
    CONFIG.c_mm2s_linebuffer_depth {2048} \
    CONFIG.c_mm2s_max_burst_length {32} \
    CONFIG.c_s2mm_genlock_mode {2} \
-   CONFIG.c_s2mm_linebuffer_depth {2048} \
+   CONFIG.c_s2mm_linebuffer_depth {1024} \
    CONFIG.c_s2mm_max_burst_length {32} \
  ] $axi_vdma_0
 
@@ -986,14 +986,14 @@ preplace netloc zynq_ultra_ps_e_0_dp_video_ref_clk 1 1 6 440 50 1190 90 N 90 NJ 
 preplace netloc smartconnect_hpm0_M00_AXI 1 3 1 N
 preplace netloc v_axi4s_vid_out_0_vid_hsync 1 1 7 430 40 NJ 40 NJ 40 NJ 40 N 40 N 40 2970
 preplace netloc zynq_ultra_ps_e_0_pl_clk0 1 0 3 20J 350 370J 100 1170
-preplace netloc axi_vdma_0_M_AXI_MM2S 1 0 7 20 10 N 10 N 10 N 10 N 10 N 10 2600
 preplace netloc smartconnect_hp0_M00_AXI 1 1 1 380
+preplace netloc axi_vdma_0_M_AXI_MM2S 1 0 7 20 10 N 10 N 10 N 10 N 10 N 10 2600
 preplace netloc rst_clk_wiz_0_150M_peripheral_aresetn 1 0 7 30 30 N 30 1210 300 1510 320 1880 360 2150 60 2620
 preplace netloc zynq_ultra_ps_e_0_M_AXI_HPM0_FPD 1 2 1 1200
 preplace netloc axi_vdma_0_M_AXIS_MM2S 1 6 1 N
 preplace netloc v_tc_0_irq 1 0 7 40J 360 350J 80 NJ 80 NJ 80 N 80 N 80 2580
-preplace netloc smartconnect_hpm1_M01_AXI 1 3 3 NJ 390 NJ 390 N
 preplace netloc axis_clock_converter_0_M_AXIS 1 5 1 2170
+preplace netloc smartconnect_hpm1_M01_AXI 1 3 3 NJ 390 NJ 390 N
 preplace netloc v_axi4s_vid_out_0_vid_active_video 1 1 7 430 950 NJ 950 NJ 950 NJ 950 N 950 N 950 2980
 preplace netloc v_axi4s_vid_out_0_vtg_ce 1 5 3 2170 610 N 610 2960
 preplace netloc xlconcat_0_dout 1 1 1 400
@@ -1001,8 +1001,8 @@ preplace netloc axi_vdma_0_mm2s_introut 1 0 7 30J 930 NJ 930 NJ 930 NJ 930 NJ 93
 preplace netloc clk_wiz_0_clk_out2 1 0 7 40 330 390 90 1180 460 1520 380 1890 380 2180 90 2610
 preplace netloc zynq_ultra_ps_e_0_pl_resetn0 1 1 2 460 920 1160
 preplace netloc fractal_0_interrupt 1 0 5 30J 340 340J 60 NJ 60 NJ 60 1850
-preplace netloc smartconnect_hpm1_M00_AXI 1 3 3 1520 150 NJ 150 NJ
 preplace netloc zynq_ultra_ps_e_0_M_AXI_HPM1_FPD 1 2 1 1200
+preplace netloc smartconnect_hpm1_M00_AXI 1 3 3 1520 150 NJ 150 NJ
 preplace netloc Net 1 1 4 410 900 1220 130 1530 140 1870J
 preplace netloc v_tc_0_vtiming_out 1 6 1 2640
 preplace netloc axi_vdma_0_M_AXI_S2MM 1 0 7 40 20 N 20 N 20 N 20 N 20 N 20 2590
