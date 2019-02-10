@@ -41,6 +41,22 @@ cv::Mat fractal_cpu(std::uint32_t width, std::uint32_t height, fix64_type x1, fi
   return dst;
 }
 
+template <std::uint32_t N>
+void split_stream(stream_type<N>& in, stream_type<1u>& out) {
+  for (std::uint32_t i = 0; i < MAX_WIDTH * MAX_HEIGHT / N; ++i) {
+    video_type<N> pp{};
+    in >> pp;
+    for (std::uint32_t j = 0; j < N; ++j) {
+      video_type<1u> p{};
+      p.data = pp.data((j + 1) * 24 - 1, j * 24);
+      p.keep = -1;
+      p.user = pp.user[j];
+      p.last = j == (N - 1) && pp.last;
+      out << p;
+    }
+  }
+}
+
 auto main() -> int {
   cv::Mat dst(MAX_HEIGHT, MAX_WIDTH, CV_8UC3);
 
@@ -55,9 +71,11 @@ auto main() -> int {
   const auto cr       = fix64_type{-0.4};
   const auto ci       = fix64_type{0.6};
 
-  stream_type stream_out;
+  stream_type<UNROLL_FACTOR> stream_out;
   fractal(x1, y1, dx, dy, offset_x, offset_y, cr, ci, stream_out);
-  AXIvideo2cvMat(stream_out, dst);
+  stream_type<1u> stream_out2;
+  split_stream<UNROLL_FACTOR>(stream_out, stream_out2);
+  AXIvideo2cvMat(stream_out2, dst);
 
   // GBR2BGR
   auto channels = std::vector<cv::Mat>{};

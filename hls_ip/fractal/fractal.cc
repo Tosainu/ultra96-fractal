@@ -13,18 +13,39 @@ std::complex<fix64_type> initialize_z(std::uint32_t x, std::uint32_t y, fix64_ty
   return std::complex<fix64_type>{-x1 + dx * x + offset_x, -y1 + dy * y + offset_y};
 }
 
-video_type pack(std::uint32_t x, std::uint32_t y, std::uint8_t i) {
+inline ap_uint<24 * 2> concat(uint24_type v1, uint24_type v2) {
+  return v2, v1;
+}
+
+template <class... Ts>
+inline ap_uint<24 * (2 + sizeof...(Ts))> concat(uint24_type v1, uint24_type v2, Ts... vs) {
+  return concat(v2, vs...), v1;
+}
+
+template <std::uint32_t N, std::size_t... Indeces>
+inline ap_uint<24 * N> pack_data_impl(std::uint8_t i[N], detail::index_sequence<Indeces...>) {
+  return concat(uint24_type{color_table[i[Indeces]]}...);
+}
+
+template <std::uint32_t N>
+inline ap_uint<24 * N> pack_data(std::uint8_t i[N]) {
+  return pack_data_impl<N>(i, detail::make_index_sequence<N>{});
+}
+
+template <std::uint32_t N>
+video_type<N> pack(std::uint32_t x, std::uint32_t y, std::uint8_t i[N]) {
 #pragma HLS INLINE
-  auto p = video_type{};
-  p.data = uint24_type{color_table[i]};
-  p.user = x == 0 && y == 0;   // Start-of-Frame
-  p.last = x == MAX_WIDTH - 1; // End-of-Line
+  auto p = video_type<N>{};
+  p.data = pack_data<N>(i);
+  p.user = x == 0 && y == 0;             // Start-of-Frame
+  p.last = (x + N - 1) == MAX_WIDTH - 1; // End-of-Line
   p.keep = -1;
   return p;
 }
 
 void fractal(fix64_type x1, fix64_type y1, fix64_type dx, fix64_type dy, fix64_type offset_x,
-             fix64_type offset_y, fix64_type cr, fix64_type ci, stream_type& m_axis) {
+             fix64_type offset_y, fix64_type cr, fix64_type ci,
+             stream_type<UNROLL_FACTOR>& m_axis) {
 #pragma HLS ALLOCATION instances=sub limit=8 operation
 #pragma HLS ALLOCATION instances=add limit=48 operation
 #pragma HLS ALLOCATION instances=mul limit=24 operation
@@ -76,11 +97,7 @@ loop_height:
         }
       }
 
-    loop3:
-      for (std::uint32_t w = 0; w < UNROLL_FACTOR; w++) {
-#pragma HLS UNROLL skip_exit_check
-        m_axis << pack(x + w, y, i[w]);
-      }
+      m_axis << pack<UNROLL_FACTOR>(x, y, i);
     }
   }
 }
