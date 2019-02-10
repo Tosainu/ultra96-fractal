@@ -49,16 +49,16 @@ void fractal(fixed_type x1, fixed_type y1, fixed_type dx, fixed_type dy, fixed_t
 #pragma HLS ALLOCATION instances=sub limit=8 operation
 #pragma HLS ALLOCATION instances=add limit=48 operation
 #pragma HLS ALLOCATION instances=mul limit=24 operation
-#pragma HLS INTERFACE s_axilite port=x1
-#pragma HLS INTERFACE s_axilite port=y1
-#pragma HLS INTERFACE s_axilite port=dx
-#pragma HLS INTERFACE s_axilite port=dy
-#pragma HLS INTERFACE s_axilite port=offset_x
-#pragma HLS INTERFACE s_axilite port=offset_y
-#pragma HLS INTERFACE s_axilite port=cr
-#pragma HLS INTERFACE s_axilite port=ci
+#pragma HLS INTERFACE s_axilite bundle=ctrl port=return
+#pragma HLS INTERFACE s_axilite bundle=ctrl port=x1
+#pragma HLS INTERFACE s_axilite bundle=ctrl port=y1
+#pragma HLS INTERFACE s_axilite bundle=ctrl port=dx
+#pragma HLS INTERFACE s_axilite bundle=ctrl port=dy
+#pragma HLS INTERFACE s_axilite bundle=ctrl port=offset_x
+#pragma HLS INTERFACE s_axilite bundle=ctrl port=offset_y
+#pragma HLS INTERFACE s_axilite bundle=ctrl port=cr
+#pragma HLS INTERFACE s_axilite bundle=ctrl port=ci
 #pragma HLS INTERFACE axis register both port=m_axis
-#pragma HLS INTERFACE s_axilite port=return
 
   const auto c = std::complex<fixed_type>{cr, ci};
 
