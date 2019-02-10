@@ -8,12 +8,12 @@
 
 static constexpr auto OUTPUT_IMAGE = "out.ppm";
 
-cv::Mat fractal_cpu(std::uint32_t width, std::uint32_t height, fix64_type x1, fix64_type y1,
-                    fix64_type dx, fix64_type dy, fix64_type offset_x, fix64_type offset_y,
-                    fix64_type cr, fix64_type ci) {
+cv::Mat fractal_cpu(std::uint32_t width, std::uint32_t height, fixed_type x1, fixed_type y1,
+                    fixed_type dx, fixed_type dy, fixed_type offset_x, fixed_type offset_y,
+                    fixed_type cr, fixed_type ci) {
   cv::Mat dst(height, width, CV_8UC3);
 
-  const auto c = std::complex<fix64_type>{cr, ci};
+  const auto c = std::complex<fixed_type>{cr, ci};
 
   constexpr auto color_table = make_color_table();
 
@@ -22,7 +22,7 @@ cv::Mat fractal_cpu(std::uint32_t width, std::uint32_t height, fix64_type x1, fi
       const auto cx = -x1 + dx * x + offset_x;
       const auto cy = -y1 + dy * y + offset_y;
 
-      auto z = std::complex<fix64_type>{cx, cy};
+      auto z = std::complex<fixed_type>{cx, cy};
 
       std::uint32_t i = 0;
       while (i < MAX_ITERATIONS && z.real() * z.real() + z.imag() * z.imag() <= 4.0) {
@@ -62,14 +62,14 @@ auto main() -> int {
 
   const double ratio  = MAX_HEIGHT / MAX_WIDTH;
   const double scale  = 1.0;
-  const auto x1       = fix64_type{1.0 / scale};
-  const auto y1       = fix64_type{ratio / scale};
-  const auto dx       = fix64_type{2 * x1 / MAX_WIDTH};
-  const auto dy       = fix64_type{2 * y1 / MAX_HEIGHT};
-  const auto offset_x = fix64_type{0.0};
-  const auto offset_y = fix64_type{0.0};
-  const auto cr       = fix64_type{-0.4};
-  const auto ci       = fix64_type{0.6};
+  const auto x1       = fixed_type{1.0 / scale};
+  const auto y1       = fixed_type{ratio / scale};
+  const auto dx       = fixed_type{2 * x1 / MAX_WIDTH};
+  const auto dy       = fixed_type{2 * y1 / MAX_HEIGHT};
+  const auto offset_x = fixed_type{0.0};
+  const auto offset_y = fixed_type{0.0};
+  const auto cr       = fixed_type{-0.4};
+  const auto ci       = fixed_type{0.6};
 
   stream_type<UNROLL_FACTOR> stream_out;
   fractal(x1, y1, dx, dy, offset_x, offset_y, cr, ci, stream_out);

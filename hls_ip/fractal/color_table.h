@@ -42,9 +42,9 @@ constexpr std::uint32_t f2i(double d) {
 }
 
 constexpr std::uint32_t colorize(double t) {
-  return (detail::f2i(9.0 * (1.0 - t) * t * t * t) << 16) |                // red
-         (detail::f2i(8.5 * (1.0 - t) * (1.0 - t) * (1.0 - t) * t) << 8) | // blue
-         (detail::f2i(15.0 * (1.0 - t) * (1.0 - t) * t * t));              // green
+  return (f2i(9.0 * (1.0 - t) * t * t * t) << 16) |                // red
+         (f2i(8.5 * (1.0 - t) * (1.0 - t) * (1.0 - t) * t) << 8) | // blue
+         (f2i(15.0 * (1.0 - t) * (1.0 - t) * t * t));              // green
 }
 
 constexpr std::uint32_t index2color(std::size_t i) {
