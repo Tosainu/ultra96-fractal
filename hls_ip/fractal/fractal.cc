@@ -66,6 +66,8 @@ loop_height:
   for (std::uint32_t y = 0; y < MAX_HEIGHT; y++) {
   loop_width:
     for (std::uint32_t x = 0; x < MAX_WIDTH; x += UNROLL_FACTOR) {
+#pragma HLS LOOP_FLATTEN off
+
       std::uint8_t i[UNROLL_FACTOR];
 #pragma HLS ARRAY_PARTITION variable=i complete dim=1
       std::complex<fixed_type> z[UNROLL_FACTOR];
