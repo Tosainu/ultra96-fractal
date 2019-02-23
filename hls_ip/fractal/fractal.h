@@ -21,7 +21,7 @@ template <std::uint32_t N>
 using stream_type = hls::stream<video_type<N>>;
 
 using pixel_type = ap_uint<BPP>;
-using fixed_type = ap_fixed<64, 12>;
+using fixed_type = ap_fixed<32, 4>;
 
 void fractal(fixed_type x1, fixed_type y1, fixed_type dx, fixed_type dy, fixed_type offset_x,
              fixed_type offset_y, fixed_type cr, fixed_type ci, stream_type<UNROLL_FACTOR>& m_axis);
