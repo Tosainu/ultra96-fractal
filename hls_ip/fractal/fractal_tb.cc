@@ -60,16 +60,16 @@ void split_stream(stream_type<N>& in, stream_type<1u>& out) {
 auto main() -> int {
   cv::Mat dst(MAX_HEIGHT, MAX_WIDTH, CV_8UC3);
 
-  const double ratio  = MAX_HEIGHT / MAX_WIDTH;
-  const double scale  = 1.0;
-  const auto x1       = fixed_type{1.0 / scale};
-  const auto y1       = fixed_type{ratio / scale};
-  const auto dx       = fixed_type{2 * x1 / MAX_WIDTH};
-  const auto dy       = fixed_type{2 * y1 / MAX_HEIGHT};
-  const auto offset_x = fixed_type{0.0};
-  const auto offset_y = fixed_type{0.0};
-  const auto cr       = fixed_type{-0.4};
-  const auto ci       = fixed_type{0.6};
+  constexpr double ratio  = MAX_HEIGHT / MAX_WIDTH;
+  constexpr double scale  = 1.0;
+  constexpr auto x1       = 1.0 / scale;
+  constexpr auto y1       = ratio / scale;
+  constexpr auto dx       = 2.0 * x1 / MAX_WIDTH;
+  constexpr auto dy       = 2.0 * y1 / MAX_HEIGHT;
+  constexpr auto offset_x = 0.0;
+  constexpr auto offset_y = 0.0;
+  constexpr auto cr       = -0.4;
+  constexpr auto ci       = 0.6;
 
   stream_type<UNROLL_FACTOR> stream_out;
   fractal(x1, y1, dx, dy, offset_x, offset_y, cr, ci, stream_out);
@@ -86,8 +86,11 @@ auto main() -> int {
   const auto dst_cpu =
       fractal_cpu(MAX_WIDTH, MAX_HEIGHT, x1, y1, dx, dy, offset_x, offset_y, cr, ci);
 
-  const auto diff = cv::sum(dst - dst_cpu);
-  if (diff[0] || diff[1] || diff[2]) {
+  cv::Mat diff;
+  cv::absdiff(dst, dst_cpu, diff);
+
+  const auto sumdiff = cv::sum(diff);
+  if (sumdiff[0] || sumdiff[1] || sumdiff[2]) {
     std::cerr << "dst != dst_cpu" << std::endl;
   } else {
     std::cout << "dst == dst_cpu" << std::endl;
