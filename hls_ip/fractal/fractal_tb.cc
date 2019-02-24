@@ -71,10 +71,10 @@ auto main() -> int {
   constexpr auto cr       = -0.4;
   constexpr auto ci       = 0.6;
 
-  stream_type<UNROLL_FACTOR> stream_out;
+  stream_type<PPC> stream_out;
   fractal(x1, y1, dx, dy, offset_x, offset_y, cr, ci, stream_out);
   stream_type<1u> stream_out2;
-  split_stream<UNROLL_FACTOR>(stream_out, stream_out2);
+  split_stream<PPC>(stream_out, stream_out2);
   AXIvideo2cvMat(stream_out2, dst);
 
   // GBR2BGR

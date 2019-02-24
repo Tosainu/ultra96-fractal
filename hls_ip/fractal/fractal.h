@@ -10,7 +10,8 @@
 
 static constexpr std::uint32_t MAX_WIDTH     = 1920u;
 static constexpr std::uint32_t MAX_HEIGHT    = 1080u;
-static constexpr std::uint32_t UNROLL_FACTOR = 16u;
+static constexpr std::uint32_t UNROLL_FACTOR = 64u;
+static constexpr std::uint32_t PPC           = 16u;
 static constexpr std::uint32_t BPP           = 24u;
 static constexpr std::uint8_t MAX_ITERATIONS = 255u;
 
@@ -24,6 +25,6 @@ using pixel_type = ap_uint<BPP>;
 using fixed_type = ap_fixed<32, 4>;
 
 void fractal(fixed_type x1, fixed_type y1, fixed_type dx, fixed_type dy, fixed_type offset_x,
-             fixed_type offset_y, fixed_type cr, fixed_type ci, stream_type<UNROLL_FACTOR>& m_axis);
+             fixed_type offset_y, fixed_type cr, fixed_type ci, stream_type<PPC>& m_axis);
 
 #endif // FRACTAL_H
