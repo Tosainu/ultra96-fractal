@@ -192,16 +192,16 @@ proc create_hier_cell_to_live_video { parentCell nameHier } {
   # Create instance: clk_wiz_0, and set properties
   set clk_wiz_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:clk_wiz:6.0 clk_wiz_0 ]
   set_property -dict [ list \
-   CONFIG.CLKOUT1_JITTER {92.548} \
-   CONFIG.CLKOUT1_PHASE_ERROR {76.967} \
-   CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {125} \
-   CONFIG.CLKOUT2_JITTER {89.612} \
-   CONFIG.CLKOUT2_PHASE_ERROR {76.967} \
+   CONFIG.CLKOUT1_JITTER {115.831} \
+   CONFIG.CLKOUT1_PHASE_ERROR {87.180} \
+   CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {100} \
+   CONFIG.CLKOUT2_JITTER {107.567} \
+   CONFIG.CLKOUT2_PHASE_ERROR {87.180} \
    CONFIG.CLKOUT2_REQUESTED_OUT_FREQ {150} \
    CONFIG.CLKOUT2_USED {true} \
-   CONFIG.MMCM_CLKFBOUT_MULT_F {15.000} \
+   CONFIG.MMCM_CLKFBOUT_MULT_F {12.000} \
    CONFIG.MMCM_CLKOUT0_DIVIDE_F {12.000} \
-   CONFIG.MMCM_CLKOUT1_DIVIDE {10} \
+   CONFIG.MMCM_CLKOUT1_DIVIDE {8} \
    CONFIG.MMCM_DIVCLK_DIVIDE {1} \
    CONFIG.NUM_OUT_CLKS {2} \
    CONFIG.USE_RESET {false} \
@@ -210,8 +210,8 @@ proc create_hier_cell_to_live_video { parentCell nameHier } {
   # Create instance: fractal_0, and set properties
   set fractal_0 [ create_bd_cell -type ip -vlnv xilinx.com:hls:fractal:1.0 fractal_0 ]
 
-  # Create instance: rst_clk_wiz_0_125M, and set properties
-  set rst_clk_wiz_0_125M [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 rst_clk_wiz_0_125M ]
+  # Create instance: rst_clk_wiz_0_100M, and set properties
+  set rst_clk_wiz_0_100M [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 rst_clk_wiz_0_100M ]
 
   # Create instance: rst_clk_wiz_0_150M, and set properties
   set rst_clk_wiz_0_150M [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 rst_clk_wiz_0_150M ]
@@ -928,13 +928,13 @@ proc create_hier_cell_to_live_video { parentCell nameHier } {
   connect_bd_intf_net -intf_net zynq_ultra_ps_e_0_M_AXI_HPM1_FPD [get_bd_intf_pins smartconnect_hpm1/S00_AXI] [get_bd_intf_pins zynq_ultra_ps_e_0/M_AXI_HPM1_FPD]
 
   # Create port connections
-  connect_bd_net -net Net [get_bd_pins axis_clock_converter_0/s_axis_aclk] [get_bd_pins clk_wiz_0/clk_out1] [get_bd_pins fractal_0/ap_clk] [get_bd_pins rst_clk_wiz_0_125M/slowest_sync_clk] [get_bd_pins smartconnect_hpm0/aclk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_fpd_aclk]
   connect_bd_net -net axi_vdma_0_mm2s_introut [get_bd_pins axi_vdma_0/mm2s_introut] [get_bd_pins xlconcat_0/In2]
   connect_bd_net -net axi_vdma_0_s2mm_introut [get_bd_pins axi_vdma_0/s2mm_introut] [get_bd_pins xlconcat_0/In3]
+  connect_bd_net -net clk_wiz_0_clk_out1 [get_bd_pins axis_clock_converter_0/s_axis_aclk] [get_bd_pins clk_wiz_0/clk_out1] [get_bd_pins fractal_0/ap_clk] [get_bd_pins rst_clk_wiz_0_100M/slowest_sync_clk] [get_bd_pins smartconnect_hpm0/aclk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_fpd_aclk]
   connect_bd_net -net clk_wiz_0_clk_out2 [get_bd_pins axi_vdma_0/m_axi_mm2s_aclk] [get_bd_pins axi_vdma_0/m_axi_s2mm_aclk] [get_bd_pins axi_vdma_0/m_axis_mm2s_aclk] [get_bd_pins axi_vdma_0/s_axi_lite_aclk] [get_bd_pins axi_vdma_0/s_axis_s2mm_aclk] [get_bd_pins axis_clock_converter_0/m_axis_aclk] [get_bd_pins clk_wiz_0/clk_out2] [get_bd_pins rst_clk_wiz_0_150M/slowest_sync_clk] [get_bd_pins smartconnect_hp0/aclk] [get_bd_pins smartconnect_hp1/aclk] [get_bd_pins smartconnect_hpm1/aclk] [get_bd_pins v_axi4s_vid_out_0/aclk] [get_bd_pins v_tc_0/s_axi_aclk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm1_fpd_aclk] [get_bd_pins zynq_ultra_ps_e_0/saxihp0_fpd_aclk] [get_bd_pins zynq_ultra_ps_e_0/saxihp1_fpd_aclk]
-  connect_bd_net -net clk_wiz_0_locked [get_bd_pins clk_wiz_0/locked] [get_bd_pins rst_clk_wiz_0_125M/dcm_locked] [get_bd_pins rst_clk_wiz_0_150M/dcm_locked]
+  connect_bd_net -net clk_wiz_0_locked [get_bd_pins clk_wiz_0/locked] [get_bd_pins rst_clk_wiz_0_100M/dcm_locked] [get_bd_pins rst_clk_wiz_0_150M/dcm_locked]
   connect_bd_net -net fractal_0_interrupt [get_bd_pins fractal_0/interrupt] [get_bd_pins xlconcat_0/In0]
-  connect_bd_net -net rst_clk_wiz_0_125M_peripheral_aresetn [get_bd_pins axis_clock_converter_0/s_axis_aresetn] [get_bd_pins fractal_0/ap_rst_n] [get_bd_pins rst_clk_wiz_0_125M/peripheral_aresetn] [get_bd_pins smartconnect_hpm0/aresetn]
+  connect_bd_net -net rst_clk_wiz_0_100M_peripheral_aresetn [get_bd_pins axis_clock_converter_0/s_axis_aresetn] [get_bd_pins fractal_0/ap_rst_n] [get_bd_pins rst_clk_wiz_0_100M/peripheral_aresetn] [get_bd_pins smartconnect_hpm0/aresetn]
   connect_bd_net -net rst_clk_wiz_0_150M_peripheral_aresetn [get_bd_pins axi_vdma_0/axi_resetn] [get_bd_pins axis_clock_converter_0/m_axis_aresetn] [get_bd_pins rst_clk_wiz_0_150M/peripheral_aresetn] [get_bd_pins smartconnect_hp0/aresetn] [get_bd_pins smartconnect_hp1/aresetn] [get_bd_pins smartconnect_hpm1/aresetn] [get_bd_pins v_axi4s_vid_out_0/aresetn] [get_bd_pins v_tc_0/s_axi_aresetn]
   connect_bd_net -net to_live_video_dout [get_bd_pins to_live_video/dout] [get_bd_pins zynq_ultra_ps_e_0/dp_live_video_in_pixel1]
   connect_bd_net -net v_axi4s_vid_out_0_vid_active_video [get_bd_pins v_axi4s_vid_out_0/vid_active_video] [get_bd_pins zynq_ultra_ps_e_0/dp_live_video_in_de]
@@ -946,7 +946,7 @@ proc create_hier_cell_to_live_video { parentCell nameHier } {
   connect_bd_net -net xlconcat_0_dout [get_bd_pins xlconcat_0/dout] [get_bd_pins zynq_ultra_ps_e_0/pl_ps_irq0]
   connect_bd_net -net zynq_ultra_ps_e_0_dp_video_ref_clk [get_bd_pins v_axi4s_vid_out_0/vid_io_out_clk] [get_bd_pins v_tc_0/clk] [get_bd_pins zynq_ultra_ps_e_0/dp_video_in_clk] [get_bd_pins zynq_ultra_ps_e_0/dp_video_ref_clk]
   connect_bd_net -net zynq_ultra_ps_e_0_pl_clk0 [get_bd_pins clk_wiz_0/clk_in1] [get_bd_pins zynq_ultra_ps_e_0/pl_clk0]
-  connect_bd_net -net zynq_ultra_ps_e_0_pl_resetn0 [get_bd_pins rst_clk_wiz_0_125M/ext_reset_in] [get_bd_pins rst_clk_wiz_0_150M/ext_reset_in] [get_bd_pins zynq_ultra_ps_e_0/pl_resetn0]
+  connect_bd_net -net zynq_ultra_ps_e_0_pl_resetn0 [get_bd_pins rst_clk_wiz_0_100M/ext_reset_in] [get_bd_pins rst_clk_wiz_0_150M/ext_reset_in] [get_bd_pins zynq_ultra_ps_e_0/pl_resetn0]
 
   # Create address segments
   create_bd_addr_seg -range 0x80000000 -offset 0x00000000 [get_bd_addr_spaces axi_vdma_0/Data_S2MM] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP2/HP0_DDR_LOW] SEG_zynq_ultra_ps_e_0_HP0_DDR_LOW
@@ -962,54 +962,54 @@ proc create_hier_cell_to_live_video { parentCell nameHier } {
    "ExpandedHierarchyInLayout":"",
    "guistr":"# # String gsaved with Nlview 6.8.11  2018-08-07 bk=1.4403 VDI=40 GEI=35 GUI=JA:9.0 TLS
 #  -string -flagsOSRD
-preplace inst v_axi4s_vid_out_0 -pg 1 -lvl 7 -y 280 -defaultsOSRD
-preplace inst axi_vdma_0 -pg 1 -lvl 6 -y 220 -defaultsOSRD
-preplace inst v_tc_0 -pg 1 -lvl 6 -y 470 -defaultsOSRD
+preplace inst v_axi4s_vid_out_0 -pg 1 -lvl 7 -y 270 -defaultsOSRD
+preplace inst rst_clk_wiz_0_100M -pg 1 -lvl 2 -y 620 -defaultsOSRD
+preplace inst axi_vdma_0 -pg 1 -lvl 6 -y 210 -defaultsOSRD
+preplace inst v_tc_0 -pg 1 -lvl 6 -y 460 -defaultsOSRD
 preplace inst zynq_ultra_ps_e_0 -pg 1 -lvl 2 -y 320 -defaultsOSRD
-preplace inst rst_clk_wiz_0_125M -pg 1 -lvl 2 -y 620 -defaultsOSRD
-preplace inst to_live_video -pg 1 -lvl 8 -y 220 -defaultsOSRD
+preplace inst to_live_video -pg 1 -lvl 8 -y 210 -defaultsOSRD
 preplace inst smartconnect_hp0 -pg 1 -lvl 1 -y 110 -defaultsOSRD
-preplace inst axis_clock_converter_0 -pg 1 -lvl 5 -y 260 -defaultsOSRD
+preplace inst axis_clock_converter_0 -pg 1 -lvl 5 -y 240 -defaultsOSRD
 preplace inst smartconnect_hp1 -pg 1 -lvl 1 -y 250 -defaultsOSRD
-preplace inst xlconcat_0 -pg 1 -lvl 1 -y 680 -defaultsOSRD
+preplace inst xlconcat_0 -pg 1 -lvl 1 -y 480 -defaultsOSRD
 preplace inst fractal_0 -pg 1 -lvl 4 -y 230 -defaultsOSRD
 preplace inst smartconnect_hpm0 -pg 1 -lvl 3 -y 210 -defaultsOSRD
-preplace inst smartconnect_hpm1 -pg 1 -lvl 3 -y 380 -defaultsOSRD
-preplace inst clk_wiz_0 -pg 1 -lvl 1 -y 830 -defaultsOSRD
+preplace inst smartconnect_hpm1 -pg 1 -lvl 3 -y 350 -defaultsOSRD
+preplace inst clk_wiz_0 -pg 1 -lvl 1 -y 630 -defaultsOSRD
 preplace inst rst_clk_wiz_0_150M -pg 1 -lvl 2 -y 800 -defaultsOSRD
-preplace netloc to_live_video_dout 1 1 8 450 910 NJ 910 NJ 910 NJ 910 N 910 N 910 N 910 3200
+preplace netloc to_live_video_dout 1 1 8 400 910 NJ 910 NJ 910 NJ 910 N 910 N 910 N 910 3170
 preplace netloc v_axi4s_vid_out_0_vid_data 1 7 1 N
-preplace netloc rst_clk_wiz_0_125M_peripheral_aresetn 1 2 3 1230 290 1530 310 1850
-preplace netloc axi_vdma_0_s2mm_introut 1 0 7 40J 940 NJ 940 NJ 940 NJ 940 NJ 940 N 940 2560
-preplace netloc clk_wiz_0_locked 1 1 1 420
-preplace netloc zynq_ultra_ps_e_0_dp_video_ref_clk 1 1 6 440 50 1190 90 N 90 NJ 90 2160J 50 2630J
+preplace netloc axi_vdma_0_s2mm_introut 1 0 7 40J 940 NJ 940 NJ 940 NJ 940 NJ 940 N 940 2530
+preplace netloc clk_wiz_0_locked 1 1 1 330
+preplace netloc zynq_ultra_ps_e_0_dp_video_ref_clk 1 1 6 390 60 1130 60 N 60 NJ 60 2120J 60 2590J
 preplace netloc smartconnect_hpm0_M00_AXI 1 3 1 N
-preplace netloc v_axi4s_vid_out_0_vid_hsync 1 1 7 430 40 NJ 40 NJ 40 NJ 40 N 40 N 40 2970
-preplace netloc zynq_ultra_ps_e_0_pl_clk0 1 0 3 20J 350 370J 100 1170
-preplace netloc smartconnect_hp0_M00_AXI 1 1 1 380
-preplace netloc axi_vdma_0_M_AXI_MM2S 1 0 7 20 10 N 10 N 10 N 10 N 10 N 10 2600
-preplace netloc rst_clk_wiz_0_150M_peripheral_aresetn 1 0 7 30 30 N 30 1210 300 1510 320 1870 360 2150 60 2620
-preplace netloc zynq_ultra_ps_e_0_M_AXI_HPM0_FPD 1 2 1 1200
+preplace netloc v_axi4s_vid_out_0_vid_hsync 1 1 7 410 70 NJ 70 NJ 70 NJ 70 2110 40 N 40 2930
+preplace netloc zynq_ultra_ps_e_0_pl_clk0 1 0 3 20J 340 340J 100 1120
+preplace netloc axi_vdma_0_M_AXI_MM2S 1 0 7 20 10 N 10 N 10 N 10 N 10 N 10 2570
+preplace netloc smartconnect_hp0_M00_AXI 1 1 1 350
+preplace netloc rst_clk_wiz_0_150M_peripheral_aresetn 1 0 7 30 30 N 30 1140 440 1490 350 1830 350 2140 80 2580
 preplace netloc axi_vdma_0_M_AXIS_MM2S 1 6 1 N
-preplace netloc v_tc_0_irq 1 0 7 40J 360 350J 80 NJ 80 NJ 80 N 80 N 80 2580
-preplace netloc smartconnect_hpm1_M01_AXI 1 3 3 NJ 390 NJ 390 N
-preplace netloc axis_clock_converter_0_M_AXIS 1 5 1 2170
-preplace netloc v_axi4s_vid_out_0_vid_active_video 1 1 7 430 950 NJ 950 NJ 950 NJ 950 N 950 N 950 2980
-preplace netloc v_axi4s_vid_out_0_vtg_ce 1 5 3 2170 610 N 610 2960
-preplace netloc xlconcat_0_dout 1 1 1 400
-preplace netloc axi_vdma_0_mm2s_introut 1 0 7 30J 930 NJ 930 NJ 930 NJ 930 NJ 930 N 930 2570
-preplace netloc clk_wiz_0_clk_out2 1 0 7 40 330 390 90 1180 460 1520 380 1880 380 2180 90 2610
-preplace netloc zynq_ultra_ps_e_0_pl_resetn0 1 1 2 460 920 1160
-preplace netloc fractal_0_interrupt 1 0 5 30J 340 340J 60 NJ 60 NJ 60 1840
-preplace netloc zynq_ultra_ps_e_0_M_AXI_HPM1_FPD 1 2 1 1200
-preplace netloc smartconnect_hpm1_M00_AXI 1 3 3 1520 150 NJ 150 NJ
-preplace netloc Net 1 1 4 410 900 1220 130 1530 140 1860J
-preplace netloc v_tc_0_vtiming_out 1 6 1 2640
-preplace netloc axi_vdma_0_M_AXI_S2MM 1 0 7 40 20 N 20 N 20 N 20 N 20 N 20 2590
-preplace netloc v_axi4s_vid_out_0_vid_vsync 1 1 7 450 70 NJ 70 NJ 70 NJ 70 N 70 N 70 2960
-preplace netloc smartconnect_hp1_M00_AXI 1 1 1 360
-preplace netloc fractal_0_m_axis 1 4 1 N
-levelinfo -pg 1 0 200 810 1370 1690 2020 2370 2800 3090 3220 -top 0 -bot 960
+preplace netloc zynq_ultra_ps_e_0_M_AXI_HPM0_FPD 1 2 1 1170
+preplace netloc v_tc_0_irq 1 0 7 40J 360 320J 50 NJ 50 NJ 50 N 50 N 50 2550
+preplace netloc axis_clock_converter_0_M_AXIS 1 5 1 2110
+preplace netloc smartconnect_hpm1_M01_AXI 1 3 3 NJ 360 NJ 360 2100
+preplace netloc v_axi4s_vid_out_0_vid_active_video 1 1 7 380 950 NJ 950 NJ 950 NJ 950 N 950 N 950 2940
+preplace netloc v_axi4s_vid_out_0_vtg_ce 1 5 3 2150 600 N 600 2930
+preplace netloc xlconcat_0_dout 1 1 1 N
+preplace netloc clk_wiz_0_clk_out1 1 1 4 370 900 1190 120 1490 120 1820
+preplace netloc axi_vdma_0_mm2s_introut 1 0 7 30J 930 NJ 930 NJ 930 NJ 930 NJ 930 N 930 2540
+preplace netloc clk_wiz_0_clk_out2 1 0 7 40 330 360 80 1160 430 1480 340 1840 340 2130 70 2610
+preplace netloc zynq_ultra_ps_e_0_pl_resetn0 1 1 2 410 920 1110
+preplace netloc fractal_0_interrupt 1 0 5 30J 350 330J 90 NJ 90 NJ 90 1790
+preplace netloc smartconnect_hpm1_M00_AXI 1 3 3 1470 140 NJ 140 NJ
+preplace netloc zynq_ultra_ps_e_0_M_AXI_HPM1_FPD 1 2 1 1150
+preplace netloc v_tc_0_vtiming_out 1 6 1 2600
+preplace netloc axi_vdma_0_M_AXI_S2MM 1 0 7 40 20 N 20 N 20 N 20 N 20 N 20 2560
+preplace netloc rst_clk_wiz_0_100M_peripheral_aresetn 1 2 3 1180 130 1480 130 1810J
+preplace netloc v_axi4s_vid_out_0_vid_vsync 1 1 7 400 40 NJ 40 NJ 40 NJ 40 2100 30 N 30 2950
+preplace netloc fractal_0_m_axis 1 4 1 1800
+preplace netloc smartconnect_hp1_M00_AXI 1 1 1 350
+levelinfo -pg 1 0 180 760 1330 1640 1970 2340 2770 3060 3190 -top 0 -bot 960
 "
 }
 
