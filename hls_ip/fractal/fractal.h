@@ -10,8 +10,8 @@
 
 static constexpr std::uint32_t MAX_WIDTH     = 1920u;
 static constexpr std::uint32_t MAX_HEIGHT    = 1080u;
-static constexpr std::uint32_t UNROLL_FACTOR = 64u;
-static constexpr std::uint32_t PPC           = 16u;
+static constexpr std::uint32_t UNROLL_FACTOR = 32u;
+static constexpr std::uint32_t PPC           = 32u;
 static constexpr std::uint32_t BPP           = 24u;
 static constexpr std::uint8_t MAX_ITERATIONS = 255u;
 

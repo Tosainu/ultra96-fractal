@@ -79,17 +79,18 @@ loop_height:
       bool d[UNROLL_FACTOR];
 #pragma HLS ARRAY_PARTITION variable=d complete dim=1
 
-    loop1:
-      for (std::uint32_t w = 0; w < UNROLL_FACTOR; w++) {
-#pragma HLS UNROLL skip_exit_check
-        i[w] = 0u;
-        z[w] = initialize_z(x + w, y, x1, y1, dx, dy, offset_x, offset_y);
-        d[w] = false;
-      }
-
     loop2:
       for (std::uint8_t t = 0; t < MAX_ITERATIONS; ++t) {
-#pragma HLS PIPELINE II=2
+#pragma HLS PIPELINE II=1
+
+      loop1:
+        for (std::uint32_t w = 0; w < UNROLL_FACTOR; w++) {
+#pragma HLS UNROLL skip_exit_check
+          i[w] = t != 0 ? i[w] : 0u;
+          z[w] = t != 0 ? z[w] : initialize_z(x + w, y, x1, y1, dx, dy, offset_x, offset_y);
+          d[w] = t != 0 ? d[w] : false;
+        }
+
       loop2_1:
         for (std::uint32_t w = 0; w < UNROLL_FACTOR; w++) {
           const auto zr2 = z[w].real() * z[w].real();
@@ -100,11 +101,11 @@ loop_height:
           z[w] = d[w] ? z[w] : std::complex<fixed_type>{zr2 - zi2 + c.real(), zri + zri + c.imag()};
           i[w] = d[w] ? i[w] : i[w] + 1;
         }
-      }
 
-      for (std::uint32_t p = 0; p < UNROLL_FACTOR; p += PPC) {
+        for (std::uint32_t p = 0; p < UNROLL_FACTOR; p += PPC) {
 #pragma HLS UNROLL skip_exit_check
-        m_axis << pack<PPC>(x + p, y, i + p);
+          if (t == MAX_ITERATIONS - 1) m_axis << pack<PPC>(x + p, y, i + p);
+        }
       }
     }
   }
