@@ -182,7 +182,7 @@ proc create_hier_cell_to_live_video { parentCell nameHier } {
    CONFIG.c_mm2s_linebuffer_depth {2048} \
    CONFIG.c_mm2s_max_burst_length {32} \
    CONFIG.c_s2mm_genlock_mode {2} \
-   CONFIG.c_s2mm_linebuffer_depth {1024} \
+   CONFIG.c_s2mm_linebuffer_depth {512} \
    CONFIG.c_s2mm_max_burst_length {32} \
  ] $axi_vdma_0
 
