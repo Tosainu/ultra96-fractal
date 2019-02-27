@@ -79,7 +79,7 @@ loop_height:
       bool d[UNROLL_FACTOR];
 #pragma HLS ARRAY_PARTITION variable=d complete dim=1
 
-    loop2:
+    loop_iteration:
       for (std::uint8_t t = 0; t < MAX_ITERATIONS; ++t) {
 #pragma HLS PIPELINE II=1
 
@@ -91,7 +91,7 @@ loop_height:
           d[w] = t != 0 ? d[w] : false;
         }
 
-      loop2_1:
+      loop2:
         for (std::uint32_t w = 0; w < UNROLL_FACTOR; w++) {
           const auto zr2 = z[w].real() * z[w].real();
           const auto zi2 = z[w].imag() * z[w].imag();
@@ -102,6 +102,7 @@ loop_height:
           i[w] = d[w] ? i[w] : i[w] + 1;
         }
 
+      loop3:
         for (std::uint32_t p = 0; p < UNROLL_FACTOR; p += PPC) {
 #pragma HLS UNROLL skip_exit_check
           if (t == MAX_ITERATIONS - 1) m_axis << pack<PPC>(x + p, y, i + p);
