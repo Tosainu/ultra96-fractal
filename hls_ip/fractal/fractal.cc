@@ -50,9 +50,7 @@ video_type<N> pack(std::uint32_t x, std::uint32_t y, std::uint8_t i[N]) {
 void fractal(fixed_type x1, fixed_type y1, fixed_type dx, fixed_type dy, fixed_type offset_x,
              fixed_type offset_y, fixed_type cr, fixed_type ci,
              stream_type<PPC>& m_axis) {
-#pragma HLS ALLOCATION instances=add limit=144 operation
 #pragma HLS ALLOCATION instances=mul limit=96 operation
-#pragma HLS ALLOCATION instances=sub limit=48 operation
 #pragma HLS INTERFACE s_axilite bundle=ctrl port=return
 #pragma HLS INTERFACE s_axilite bundle=ctrl port=x1
 #pragma HLS INTERFACE s_axilite bundle=ctrl port=y1
