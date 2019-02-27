@@ -72,12 +72,12 @@ loop_height:
     for (std::uint32_t x = 0; x < MAX_WIDTH; x += UNROLL_FACTOR) {
 #pragma HLS LOOP_FLATTEN off
 
+      bool d[UNROLL_FACTOR];
+#pragma HLS ARRAY_PARTITION variable=d complete dim=1
       std::uint8_t i[UNROLL_FACTOR];
 #pragma HLS ARRAY_PARTITION variable=i complete dim=1
       std::complex<fixed_type> z[UNROLL_FACTOR];
 #pragma HLS ARRAY_PARTITION variable=z complete dim=1
-      bool d[UNROLL_FACTOR];
-#pragma HLS ARRAY_PARTITION variable=d complete dim=1
 
     loop_iteration:
       for (std::uint8_t t = 0; t < MAX_ITERATIONS; ++t) {
@@ -86,9 +86,9 @@ loop_height:
       loop1:
         for (std::uint32_t w = 0; w < UNROLL_FACTOR; w++) {
 #pragma HLS UNROLL skip_exit_check
+          d[w] = t != 0 ? d[w] : false;
           i[w] = t != 0 ? i[w] : 0u;
           z[w] = t != 0 ? z[w] : initialize_z(x + w, y, x1, y1, dx, dy, offset_x, offset_y);
-          d[w] = t != 0 ? d[w] : false;
         }
 
       loop2:
@@ -98,8 +98,8 @@ loop_height:
           const auto zri = z[w].real() * z[w].imag();
 
           d[w] = d[w] || (zr2 + zi2 > fixed_type{4.0});
-          z[w] = d[w] ? z[w] : std::complex<fixed_type>{zr2 - zi2 + c.real(), zri + zri + c.imag()};
           i[w] = d[w] ? i[w] : i[w] + 1;
+          z[w] = d[w] ? z[w] : std::complex<fixed_type>{zr2 - zi2 + c.real(), zri + zri + c.imag()};
         }
 
       loop3:
