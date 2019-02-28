@@ -6,12 +6,6 @@
 
 static constexpr auto color_table = make_color_table();
 
-std::complex<fixed_type> initialize_z(std::uint32_t x, std::uint32_t y, fixed_type x0,
-                                      fixed_type y0, fixed_type dx, fixed_type dy) {
-#pragma HLS INLINE
-  return std::complex<fixed_type>{-x0 + dx * x, -y0 + dy * y};
-}
-
 inline ap_uint<BPP * 2> concat(pixel_type v1, pixel_type v2) {
 #pragma HLS INLINE
   return v2, v1;
@@ -60,6 +54,19 @@ void fractal(fixed_type x0, fixed_type y0, fixed_type dx, fixed_type dy, fixed_t
 
   const auto c = std::complex<fixed_type>{cr, ci};
 
+  using fixed_type2 = decltype(fixed_type{} * std::uint32_t{});
+
+  fixed_type2 dxx;
+  fixed_type2 dyy;
+  fixed_type2 dxw[UNROLL_FACTOR];
+#pragma HLS ARRAY_PARTITION variable=dxw complete dim=1
+
+loop_dxw:
+  for (std::uint32_t w = 0; w < UNROLL_FACTOR; w++) {
+#pragma HLS UNROLL skip_exit_check
+    dxw[w] = dx * w;
+  }
+
 loop_height:
   for (std::uint32_t y = 0; y < MAX_HEIGHT; y++) {
   loop_width:
@@ -73,6 +80,9 @@ loop_height:
       std::complex<fixed_type> z[UNROLL_FACTOR];
 #pragma HLS ARRAY_PARTITION variable=z complete dim=1
 
+      dxx = dx * x;
+      dyy = dy * y;
+
     loop_iteration:
       for (std::uint8_t t = 0; t < MAX_ITERATIONS; ++t) {
 #pragma HLS PIPELINE II=1
@@ -82,7 +92,7 @@ loop_height:
 #pragma HLS UNROLL skip_exit_check
           d[w] = t != 0 ? d[w] : false;
           i[w] = t != 0 ? i[w] : 0u;
-          z[w] = t != 0 ? z[w] : initialize_z(x + w, y, x0, y0, dx, dy);
+          z[w] = t != 0 ? z[w] : std::complex<fixed_type>{-x0 + dxx + dxw[w], -y0 + dyy};
         }
 
       loop2:
