@@ -8,9 +8,8 @@
 
 static constexpr auto OUTPUT_IMAGE = "out.ppm";
 
-cv::Mat fractal_cpu(std::uint32_t width, std::uint32_t height, fixed_type x1, fixed_type y1,
-                    fixed_type dx, fixed_type dy, fixed_type offset_x, fixed_type offset_y,
-                    fixed_type cr, fixed_type ci) {
+cv::Mat fractal_cpu(std::uint32_t width, std::uint32_t height, fixed_type x0, fixed_type y0,
+                    fixed_type dx, fixed_type dy, fixed_type cr, fixed_type ci) {
   cv::Mat dst(height, width, CV_8UC3);
 
   const auto c = std::complex<fixed_type>{cr, ci};
@@ -19,8 +18,8 @@ cv::Mat fractal_cpu(std::uint32_t width, std::uint32_t height, fixed_type x1, fi
 
   for (std::uint32_t y = 0; y < height; y++) {
     for (std::uint32_t x = 0; x < width; x++) {
-      const auto cx = -x1 + dx * x + offset_x;
-      const auto cy = -y1 + dy * y - offset_y;
+      const auto cx = -x0 + dx * x;
+      const auto cy = -y0 + dy * y;
 
       auto z = std::complex<fixed_type>{cx, cy};
 
@@ -70,9 +69,11 @@ auto main() -> int {
   constexpr auto offset_y = 0.0;
   constexpr auto cr       = -0.4;
   constexpr auto ci       = 0.6;
+  constexpr auto x0       = x1 - offset_x;
+  constexpr auto y0       = y1 + offset_y;
 
   stream_type<PPC> stream_out;
-  fractal(x1, y1, dx, dy, offset_x, offset_y, cr, ci, stream_out);
+  fractal(x0, y0, dx, dy, cr, ci, stream_out);
   stream_type<1u> stream_out2;
   split_stream<PPC>(stream_out, stream_out2);
   AXIvideo2cvMat(stream_out2, dst);
@@ -83,8 +84,7 @@ auto main() -> int {
   std::swap(channels[0], channels[1]);
   cv::merge(channels, dst);
 
-  const auto dst_cpu =
-      fractal_cpu(MAX_WIDTH, MAX_HEIGHT, x1, y1, dx, dy, offset_x, offset_y, cr, ci);
+  const auto dst_cpu = fractal_cpu(MAX_WIDTH, MAX_HEIGHT, x0, y0, dx, dy, cr, ci);
 
   cv::Mat diff;
   cv::absdiff(dst, dst_cpu, diff);

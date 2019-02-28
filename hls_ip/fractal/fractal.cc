@@ -6,11 +6,10 @@
 
 static constexpr auto color_table = make_color_table();
 
-std::complex<fixed_type> initialize_z(std::uint32_t x, std::uint32_t y, fixed_type x1,
-                                      fixed_type y1, fixed_type dx, fixed_type dy,
-                                      fixed_type offset_x, fixed_type offset_y) {
+std::complex<fixed_type> initialize_z(std::uint32_t x, std::uint32_t y, fixed_type x0,
+                                      fixed_type y0, fixed_type dx, fixed_type dy) {
 #pragma HLS INLINE
-  return std::complex<fixed_type>{-x1 + offset_x + dx * x, -y1 - offset_y + dy * y};
+  return std::complex<fixed_type>{-x0 + dx * x, -y0 + dy * y};
 }
 
 inline ap_uint<BPP * 2> concat(pixel_type v1, pixel_type v2) {
@@ -47,17 +46,14 @@ video_type<N> pack(std::uint32_t x, std::uint32_t y, std::uint8_t i[N]) {
   return p;
 }
 
-void fractal(fixed_type x1, fixed_type y1, fixed_type dx, fixed_type dy, fixed_type offset_x,
-             fixed_type offset_y, fixed_type cr, fixed_type ci,
-             stream_type<PPC>& m_axis) {
+void fractal(fixed_type x0, fixed_type y0, fixed_type dx, fixed_type dy, fixed_type cr,
+             fixed_type ci, stream_type<PPC>& m_axis) {
 #pragma HLS ALLOCATION instances=mul limit=96 operation
 #pragma HLS INTERFACE s_axilite bundle=ctrl port=return
-#pragma HLS INTERFACE s_axilite bundle=ctrl port=x1
-#pragma HLS INTERFACE s_axilite bundle=ctrl port=y1
+#pragma HLS INTERFACE s_axilite bundle=ctrl port=x0
+#pragma HLS INTERFACE s_axilite bundle=ctrl port=y0
 #pragma HLS INTERFACE s_axilite bundle=ctrl port=dx
 #pragma HLS INTERFACE s_axilite bundle=ctrl port=dy
-#pragma HLS INTERFACE s_axilite bundle=ctrl port=offset_x
-#pragma HLS INTERFACE s_axilite bundle=ctrl port=offset_y
 #pragma HLS INTERFACE s_axilite bundle=ctrl port=cr
 #pragma HLS INTERFACE s_axilite bundle=ctrl port=ci
 #pragma HLS INTERFACE axis register both port=m_axis
@@ -86,7 +82,7 @@ loop_height:
 #pragma HLS UNROLL skip_exit_check
           d[w] = t != 0 ? d[w] : false;
           i[w] = t != 0 ? i[w] : 0u;
-          z[w] = t != 0 ? z[w] : initialize_z(x + w, y, x1, y1, dx, dy, offset_x, offset_y);
+          z[w] = t != 0 ? z[w] : initialize_z(x + w, y, x0, y0, dx, dy);
         }
 
       loop2:
