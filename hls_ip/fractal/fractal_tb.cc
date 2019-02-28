@@ -20,7 +20,7 @@ cv::Mat fractal_cpu(std::uint32_t width, std::uint32_t height, fixed_type x1, fi
   for (std::uint32_t y = 0; y < height; y++) {
     for (std::uint32_t x = 0; x < width; x++) {
       const auto cx = -x1 + dx * x + offset_x;
-      const auto cy = -y1 + dy * y + offset_y;
+      const auto cy = -y1 + dy * y - offset_y;
 
       auto z = std::complex<fixed_type>{cx, cy};
 

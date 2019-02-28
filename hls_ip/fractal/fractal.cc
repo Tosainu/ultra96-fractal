@@ -10,7 +10,7 @@ std::complex<fixed_type> initialize_z(std::uint32_t x, std::uint32_t y, fixed_ty
                                       fixed_type y1, fixed_type dx, fixed_type dy,
                                       fixed_type offset_x, fixed_type offset_y) {
 #pragma HLS INLINE
-  return std::complex<fixed_type>{-x1 + offset_x + dx * x, -y1 + offset_y + dy * y};
+  return std::complex<fixed_type>{-x1 + offset_x + dx * x, -y1 - offset_y + dy * y};
 }
 
 inline ap_uint<BPP * 2> concat(pixel_type v1, pixel_type v2) {
