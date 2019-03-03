@@ -957,61 +957,6 @@ proc create_hier_cell_to_live_video { parentCell nameHier } {
   create_bd_addr_seg -range 0x00010000 -offset 0xA0000000 [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs fractal_0/s_axi_ctrl/Reg] SEG_fractal_0_Reg
   create_bd_addr_seg -range 0x00010000 -offset 0xB0010000 [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs v_tc_0/ctrl/Reg] SEG_v_tc_0_Reg
 
-  # Perform GUI Layout
-  regenerate_bd_layout -layout_string {
-   "ExpandedHierarchyInLayout":"",
-   "guistr":"# # String gsaved with Nlview 6.8.11  2018-08-07 bk=1.4403 VDI=40 GEI=35 GUI=JA:9.0 TLS
-#  -string -flagsOSRD
-preplace inst v_axi4s_vid_out_0 -pg 1 -lvl 7 -y 270 -defaultsOSRD
-preplace inst rst_clk_wiz_0_100M -pg 1 -lvl 2 -y 620 -defaultsOSRD
-preplace inst axi_vdma_0 -pg 1 -lvl 6 -y 210 -defaultsOSRD
-preplace inst v_tc_0 -pg 1 -lvl 6 -y 460 -defaultsOSRD
-preplace inst zynq_ultra_ps_e_0 -pg 1 -lvl 2 -y 320 -defaultsOSRD
-preplace inst to_live_video -pg 1 -lvl 8 -y 210 -defaultsOSRD
-preplace inst smartconnect_hp0 -pg 1 -lvl 1 -y 110 -defaultsOSRD
-preplace inst axis_clock_converter_0 -pg 1 -lvl 5 -y 240 -defaultsOSRD
-preplace inst smartconnect_hp1 -pg 1 -lvl 1 -y 250 -defaultsOSRD
-preplace inst xlconcat_0 -pg 1 -lvl 1 -y 480 -defaultsOSRD
-preplace inst fractal_0 -pg 1 -lvl 4 -y 230 -defaultsOSRD
-preplace inst smartconnect_hpm0 -pg 1 -lvl 3 -y 210 -defaultsOSRD
-preplace inst smartconnect_hpm1 -pg 1 -lvl 3 -y 350 -defaultsOSRD
-preplace inst clk_wiz_0 -pg 1 -lvl 1 -y 630 -defaultsOSRD
-preplace inst rst_clk_wiz_0_150M -pg 1 -lvl 2 -y 800 -defaultsOSRD
-preplace netloc to_live_video_dout 1 1 8 400 910 NJ 910 NJ 910 NJ 910 N 910 N 910 N 910 3170
-preplace netloc v_axi4s_vid_out_0_vid_data 1 7 1 N
-preplace netloc axi_vdma_0_s2mm_introut 1 0 7 40J 940 NJ 940 NJ 940 NJ 940 NJ 940 N 940 2530
-preplace netloc clk_wiz_0_locked 1 1 1 330
-preplace netloc zynq_ultra_ps_e_0_dp_video_ref_clk 1 1 6 390 60 1130 60 N 60 NJ 60 2120J 60 2590J
-preplace netloc smartconnect_hpm0_M00_AXI 1 3 1 N
-preplace netloc v_axi4s_vid_out_0_vid_hsync 1 1 7 410 70 NJ 70 NJ 70 NJ 70 2110 40 N 40 2930
-preplace netloc zynq_ultra_ps_e_0_pl_clk0 1 0 3 20J 340 340J 100 1120
-preplace netloc axi_vdma_0_M_AXI_MM2S 1 0 7 20 10 N 10 N 10 N 10 N 10 N 10 2570
-preplace netloc smartconnect_hp0_M00_AXI 1 1 1 350
-preplace netloc rst_clk_wiz_0_150M_peripheral_aresetn 1 0 7 30 30 N 30 1140 440 1490 350 1830 350 2140 80 2580
-preplace netloc axi_vdma_0_M_AXIS_MM2S 1 6 1 N
-preplace netloc zynq_ultra_ps_e_0_M_AXI_HPM0_FPD 1 2 1 1170
-preplace netloc v_tc_0_irq 1 0 7 40J 360 320J 50 NJ 50 NJ 50 N 50 N 50 2550
-preplace netloc axis_clock_converter_0_M_AXIS 1 5 1 2110
-preplace netloc smartconnect_hpm1_M01_AXI 1 3 3 NJ 360 NJ 360 2100
-preplace netloc v_axi4s_vid_out_0_vid_active_video 1 1 7 380 950 NJ 950 NJ 950 NJ 950 N 950 N 950 2940
-preplace netloc v_axi4s_vid_out_0_vtg_ce 1 5 3 2150 600 N 600 2930
-preplace netloc xlconcat_0_dout 1 1 1 N
-preplace netloc clk_wiz_0_clk_out1 1 1 4 370 900 1190 120 1490 120 1820
-preplace netloc axi_vdma_0_mm2s_introut 1 0 7 30J 930 NJ 930 NJ 930 NJ 930 NJ 930 N 930 2540
-preplace netloc clk_wiz_0_clk_out2 1 0 7 40 330 360 80 1160 430 1480 340 1840 340 2130 70 2610
-preplace netloc zynq_ultra_ps_e_0_pl_resetn0 1 1 2 410 920 1110
-preplace netloc fractal_0_interrupt 1 0 5 30J 350 330J 90 NJ 90 NJ 90 1790
-preplace netloc smartconnect_hpm1_M00_AXI 1 3 3 1470 140 NJ 140 NJ
-preplace netloc zynq_ultra_ps_e_0_M_AXI_HPM1_FPD 1 2 1 1150
-preplace netloc v_tc_0_vtiming_out 1 6 1 2600
-preplace netloc axi_vdma_0_M_AXI_S2MM 1 0 7 40 20 N 20 N 20 N 20 N 20 N 20 2560
-preplace netloc rst_clk_wiz_0_100M_peripheral_aresetn 1 2 3 1180 130 1480 130 1810J
-preplace netloc v_axi4s_vid_out_0_vid_vsync 1 1 7 400 40 NJ 40 NJ 40 NJ 40 2100 30 N 30 2950
-preplace netloc fractal_0_m_axis 1 4 1 1800
-preplace netloc smartconnect_hp1_M00_AXI 1 1 1 350
-levelinfo -pg 1 0 180 760 1330 1640 1970 2340 2770 3060 3190 -top 0 -bot 960
-"
-}
 
   # Restore current instance
   current_bd_instance $oldCurInst
