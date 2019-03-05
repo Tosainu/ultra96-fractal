@@ -1,3 +1,7 @@
 /include/ "system-conf.dtsi"
 / {
 };
+
+&fractal_0 {
+	reset-gpios = <&gpio 172 1>;
+};

@@ -12,11 +12,43 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-subdev.h>
 
+struct fractal_device {
+	struct device *dev;
+	void __iomem *iomem;
+	struct gpio_desc *rst_gpio;
+};
+
 static int fractal_probe(struct platform_device *dev)
 {
+	struct fractal_device *fractal;
+	struct resource *res;
+	int ret;
+
+	fractal = devm_kzalloc(&dev->dev, sizeof *fractal, GFP_KERNEL);
+	if (!fractal)
+		return -ENOMEM;
+
+	fractal->dev = &dev->dev;
+
+	res = platform_get_resource(dev, IORESOURCE_MEM, 0);
+	fractal->iomem = devm_ioremap_resource(fractal->dev, res);
+	if (IS_ERR(fractal->iomem))
+		return PTR_ERR(fractal->iomem);
+
+	fractal->rst_gpio = devm_gpiod_get(&dev->dev, "reset", GPIOD_OUT_HIGH);
+	if (IS_ERR(fractal->rst_gpio)) {
+		ret = PTR_ERR(fractal->rst_gpio);
+		goto error;
+	}
+
+	gpiod_set_value_cansleep(fractal->rst_gpio, 0x0);
+
 	dev_info(&dev->dev, "fractal_probe\n");
 
 	return 0;
+
+error:
+	return ret;
 }
 
 static int fractal_remove(struct platform_device *dev)
