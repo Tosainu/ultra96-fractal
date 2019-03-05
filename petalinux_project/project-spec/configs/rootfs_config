@@ -462,7 +462,7 @@ CONFIG_mtd-utils=y
 #
 # canutils 
 #
-CONFIG_canutils=y
+# CONFIG_canutils is not set
 # CONFIG_canutils-dev is not set
 # CONFIG_canutils-dbg is not set
 
@@ -524,7 +524,7 @@ CONFIG_canutils=y
 # CONFIG_openssh is not set
 # CONFIG_openssh-ssh is not set
 # CONFIG_openssh-sftp is not set
-CONFIG_openssh-sftp-server=y
+# CONFIG_openssh-sftp-server is not set
 # CONFIG_openssh-keygen is not set
 # CONFIG_openssh-dbg is not set
 # CONFIG_openssh-dev is not set
@@ -1226,7 +1226,7 @@ CONFIG_pciutils=y
 #
 # run-postinsts 
 #
-CONFIG_run-postinsts=y
+# CONFIG_run-postinsts is not set
 # CONFIG_run-postinsts-dbg is not set
 # CONFIG_run-postinsts-dev is not set
 
@@ -2414,7 +2414,7 @@ CONFIG_run-postinsts=y
 # CONFIG_eudev-hwdb is not set
 # CONFIG_eudev-dev is not set
 # CONFIG_eudev-dbg is not set
-CONFIG_udev-extraconf=y
+# CONFIG_udev-extraconf is not set
 
 #
 # fbset 
@@ -2789,7 +2789,7 @@ CONFIG_packagegroup-core-boot=y
 #
 # packagegroup-core-ssh-dropbear 
 #
-CONFIG_packagegroup-core-ssh-dropbear=y
+# CONFIG_packagegroup-core-ssh-dropbear is not set
 # CONFIG_packagegroup-core-ssh-dropbear-dev is not set
 # CONFIG_packagegroup-core-ssh-dropbear-dbg is not set
 
@@ -4369,7 +4369,7 @@ CONFIG_hellopm=y
 #
 # Image Features
 #
-CONFIG_imagefeature-ssh-server-dropbear=y
+# CONFIG_imagefeature-ssh-server-dropbear is not set
 # CONFIG_imagefeature-ssh-server-openssh is not set
 CONFIG_imagefeature-hwcodecs=y
 # CONFIG_imagefeature-package-management is not set
