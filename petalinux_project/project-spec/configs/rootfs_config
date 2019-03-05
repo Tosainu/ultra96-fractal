@@ -4382,6 +4382,11 @@ CONFIG_imagefeature-hwcodecs=y
 # CONFIG_peekpoke is not set
 
 #
+# modules 
+#
+CONFIG_kernel-module-fractal=y
+
+#
 # user packages 
 #
 
