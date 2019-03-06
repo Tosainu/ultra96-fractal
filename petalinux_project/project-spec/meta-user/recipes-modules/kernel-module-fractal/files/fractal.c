@@ -38,32 +38,62 @@ static int fractal_enum_mbus_code(struct v4l2_subdev *subdev,
 				  struct v4l2_subdev_pad_config *cfg,
 				  struct v4l2_subdev_mbus_code_enum *code)
 {
-	/* TODO */
-	return -EINVAL;
+	struct v4l2_mbus_framefmt *format;
+
+	if (code->which == V4L2_SUBDEV_FORMAT_ACTIVE || code->index)
+		return -EINVAL;
+
+	format = v4l2_subdev_get_try_format(subdev, cfg, code->pad);
+
+	code->code = format->code;
+
+	return 0;
 }
 
 static int fractal_enum_frame_size(struct v4l2_subdev *subdev,
 				   struct v4l2_subdev_pad_config *cfg,
 				   struct v4l2_subdev_frame_size_enum *fse)
 {
-	/* TODO */
-	return -EINVAL;
+	struct v4l2_mbus_framefmt *format;
+
+	if (fse->which == V4L2_SUBDEV_FORMAT_ACTIVE)
+		return -EINVAL;
+
+	format = v4l2_subdev_get_try_format(subdev, cfg, fse->pad);
+
+	if (fse->index || fse->code != format->code)
+		return -EINVAL;
+
+	fse->min_width = format->width;
+	fse->max_width = format->width;
+	fse->min_height = format->height;
+	fse->max_height = format->height;
+
+	return 0;
 }
 
 static int fractal_set_format(struct v4l2_subdev *subdev,
 			      struct v4l2_subdev_pad_config *cfg,
 			      struct v4l2_subdev_format *fmt)
 {
-	/* TODO */
-	return -EINVAL;
+	/* Currently, Fractal IP cannot change pad formats */
+	return 0;
 }
 
 static int fractal_get_format(struct v4l2_subdev *subdev,
 			      struct v4l2_subdev_pad_config *cfg,
 			      struct v4l2_subdev_format *fmt)
 {
-	/* TODO */
-	return -EINVAL;
+	struct fractal_device *fractal = get_fractal_device(subdev);
+
+	switch (fmt->which) {
+	case V4L2_SUBDEV_FORMAT_TRY:
+		fmt->format = *v4l2_subdev_get_try_format(subdev, cfg, fmt->pad);
+	case V4L2_SUBDEV_FORMAT_ACTIVE:
+		fmt->format = fractal->format;
+	}
+
+	return 0;
 }
 
 static int fractal_open(struct v4l2_subdev *subdev, struct v4l2_subdev_fh *fh)
