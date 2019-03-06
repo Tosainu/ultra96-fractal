@@ -22,6 +22,12 @@ struct fractal_device {
 	struct media_pad pads[1];
 };
 
+static inline struct fractal_device
+*get_fractal_device(struct v4l2_subdev *subdev)
+{
+	return container_of(subdev, struct fractal_device, subdev);
+}
+
 static int fractal_s_stream(struct v4l2_subdev *subdev, int enable)
 {
 	/* TODO */
@@ -62,14 +68,18 @@ static int fractal_get_format(struct v4l2_subdev *subdev,
 
 static int fractal_open(struct v4l2_subdev *subdev, struct v4l2_subdev_fh *fh)
 {
-	/* TODO */
-	return -EINVAL;
+	struct fractal_device *fractal = get_fractal_device(subdev);
+	struct v4l2_mbus_framefmt *format;
+
+	format = v4l2_subdev_get_try_format(subdev, fh->pad, 0);
+	*format = fractal->format;
+
+	return 0;
 }
 
 static int fractal_close(struct v4l2_subdev *subdev, struct v4l2_subdev_fh *fh)
 {
-	/* TODO */
-	return -EINVAL;
+	return 0;
 }
 
 static const struct v4l2_subdev_core_ops fractal_core_ops = {
