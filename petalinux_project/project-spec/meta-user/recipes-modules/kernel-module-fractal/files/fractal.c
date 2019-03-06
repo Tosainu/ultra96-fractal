@@ -2,6 +2,7 @@
 /* Copyright (c) 2019 Tosainu. */
 
 #include <linux/bitops.h>
+#include <linux/clk.h>
 #include <linux/device.h>
 #include <linux/gpio/consumer.h>
 #include <linux/module.h>
@@ -29,6 +30,7 @@
 struct fractal_device {
 	struct device *dev;
 	void __iomem *iomem;
+	struct clk *clk;
 	struct gpio_desc *rst_gpio;
 
 	struct v4l2_subdev subdev;
@@ -258,6 +260,12 @@ static int fractal_probe(struct platform_device *dev)
 	if (IS_ERR(fractal->iomem))
 		return PTR_ERR(fractal->iomem);
 
+	fractal->clk = devm_clk_get(fractal->dev, NULL);
+	if (IS_ERR(fractal->clk))
+		return PTR_ERR(fractal->clk);
+
+	clk_prepare_enable(fractal->clk);
+
 	fractal->rst_gpio = devm_gpiod_get(&dev->dev, "reset", GPIOD_OUT_HIGH);
 	if (IS_ERR(fractal->rst_gpio)) {
 		ret = PTR_ERR(fractal->rst_gpio);
@@ -305,6 +313,8 @@ static int fractal_probe(struct platform_device *dev)
 	return 0;
 
 error:
+	clk_disable_unprepare(fractal->clk);
+
 	return ret;
 }
 
@@ -315,6 +325,7 @@ static int fractal_remove(struct platform_device *dev)
 
 	v4l2_async_unregister_subdev(subdev);
 	media_entity_cleanup(&subdev->entity);
+	clk_disable_unprepare(fractal->clk);
 
 	dev_info(&dev->dev, "fractal_remove\n");
 
