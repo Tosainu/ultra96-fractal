@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0 OR MIT
 /* Copyright (c) 2019 Tosainu. */
 
+#include <linux/bitops.h>
 #include <linux/device.h>
 #include <linux/gpio/consumer.h>
 #include <linux/module.h>
@@ -12,6 +13,19 @@
 #include <media/v4l2-ctrls.h>
 #include <media/v4l2-subdev.h>
 
+#define FRACTAL_REG_CTRL		0x0
+#define FRACTAL_REG_CTRL_START		BIT(0)
+#define FRACTAL_REG_CTRL_DONE		BIT(1)
+#define FRACTAL_REG_CTRL_IDLE		BIT(2)
+#define FRACTAL_REG_CTRL_READY		BIT(3)
+#define FRACTAL_REG_CTRL_AUTO_RESTART	BIT(7)
+#define FRACTAL_REG_X0			0x10
+#define FRACTAL_REG_Y0			0x18
+#define FRACTAL_REG_DX			0x20
+#define FRACTAL_REG_DY			0x28
+#define FRACTAL_REG_CR			0x30
+#define FRACTAL_REG_CI			0x38
+
 struct fractal_device {
 	struct device *dev;
 	void __iomem *iomem;
@@ -22,6 +36,26 @@ struct fractal_device {
 	struct media_pad pads[1];
 };
 
+static inline u32 fractal_read(struct fractal_device *dev, u32 addr)
+{
+	return ioread32(dev->iomem + addr);
+}
+
+static inline void fractal_write(struct fractal_device *dev, u32 addr, u32 value)
+{
+	iowrite32(value, dev->iomem + addr);
+}
+
+static inline void fractal_set(struct fractal_device *dev, u32 addr, u32 value)
+{
+	fractal_write(dev, addr, fractal_read(dev, addr) | value);
+}
+
+static inline void fractal_clr(struct fractal_device *dev, u32 addr, u32 value)
+{
+	fractal_write(dev, addr, fractal_read(dev, addr) & ~value);
+}
+
 static inline struct fractal_device
 *get_fractal_device(struct v4l2_subdev *subdev)
 {
@@ -30,8 +64,25 @@ static inline struct fractal_device
 
 static int fractal_s_stream(struct v4l2_subdev *subdev, int enable)
 {
-	/* TODO */
-	return -EINVAL;
+	struct fractal_device *fractal = get_fractal_device(subdev);
+
+	if (enable) {
+		fractal_write(fractal, FRACTAL_REG_X0, 0x10000000u);
+		fractal_write(fractal, FRACTAL_REG_Y0, 0x09000000u);
+		fractal_write(fractal, FRACTAL_REG_DX, 0x00044444u);
+		fractal_write(fractal, FRACTAL_REG_DY, 0x00044444u);
+		fractal_write(fractal, FRACTAL_REG_CR, 0xf9999999u);
+		fractal_write(fractal, FRACTAL_REG_CI, 0x09999999u);
+
+		fractal_set(fractal, FRACTAL_REG_CTRL,
+			    FRACTAL_REG_CTRL_AUTO_RESTART |
+			    FRACTAL_REG_CTRL_START);
+	} else {
+		gpiod_set_value_cansleep(fractal->rst_gpio, 0x1);
+		gpiod_set_value_cansleep(fractal->rst_gpio, 0x0);
+	}
+
+	return 0;
 }
 
 static int fractal_enum_mbus_code(struct v4l2_subdev *subdev,
