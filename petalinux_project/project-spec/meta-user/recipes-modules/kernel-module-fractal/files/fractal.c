@@ -128,6 +128,20 @@ static int fractal_set_format(struct v4l2_subdev *subdev,
 			      struct v4l2_subdev_format *fmt)
 {
 	/* Currently, Fractal IP cannot change pad formats */
+	struct fractal_device *fractal = get_fractal_device(subdev);
+
+	switch (fmt->which) {
+	case V4L2_SUBDEV_FORMAT_TRY:
+		fmt->format = *v4l2_subdev_get_try_format(subdev, cfg, fmt->pad);
+		break;
+	case V4L2_SUBDEV_FORMAT_ACTIVE:
+		fmt->format = fractal->format;
+		break;
+	}
+
+	fmt->format.width = 1920;
+	fmt->format.height = 1080;
+
 	return 0;
 }
 
@@ -140,8 +154,10 @@ static int fractal_get_format(struct v4l2_subdev *subdev,
 	switch (fmt->which) {
 	case V4L2_SUBDEV_FORMAT_TRY:
 		fmt->format = *v4l2_subdev_get_try_format(subdev, cfg, fmt->pad);
+		break;
 	case V4L2_SUBDEV_FORMAT_ACTIVE:
 		fmt->format = fractal->format;
+		break;
 	}
 
 	return 0;
@@ -220,7 +236,7 @@ static int fractal_probe(struct platform_device *dev)
 
 	fractal->pads[0].flags = MEDIA_PAD_FL_SOURCE;
 
-	fractal->format.code = MEDIA_BUS_FMT_RGB888_1X24;
+	fractal->format.code = MEDIA_BUS_FMT_RBG888_1X24;
 	fractal->format.field = V4L2_FIELD_NONE;;
 	fractal->format.colorspace = V4L2_COLORSPACE_SRGB;
 	fractal->format.width = 1920;
