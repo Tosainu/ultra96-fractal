@@ -2,13 +2,10 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
-#include <cstring>
-#include <fstream>
 #include <iostream>
 #include <iomanip>
 #include <memory>
 #include <string_view>
-#include <tuple>
 #include <vector>
 
 #include <wayland-client.h>
@@ -21,10 +18,9 @@
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
-#include "nanovg.h"
 #define NANOVG_GLES2_IMPLEMENTATION
-#include "nanovg_gl.h"
-#include "nanovg_gl_utils.h"
+#include <nanovg.h>
+#include <nanovg_gl.h>
 
 extern "C" {
 #include <fcntl.h>
@@ -38,9 +34,12 @@ extern "C" {
 
 using namespace std::string_view_literals;
 
-constexpr std::uint32_t NUM_BUFFERS = 8;
+static constexpr std::uint32_t NUM_BUFFERS = 8;
 
 struct window_context {
+  int width;
+  int height;
+
   ::wl_compositor* compositor;
   ::wl_egl_window* egl_window;
   ::wl_region* region;
@@ -54,22 +53,20 @@ struct window_context {
   ::EGLSurface egl_surface;
 
   ::NVGcontext* vg;
-  int img;
-
+  int texture_id;
   std::unique_ptr<std::uint8_t[]> buffer;
 
   int video_fd;
   std::array<std::uint8_t*, NUM_BUFFERS> video_buffers;
 };
 
-void handle_ping(void* _data, struct wl_shell_surface* shell_surface, uint32_t serial) {
+void handle_ping(void*, ::wl_shell_surface* shell_surface, std::uint32_t serial) {
   wl_shell_surface_pong(shell_surface, serial);
 }
 
-void handle_configure(void* data, struct wl_shell_surface* shell_surface, uint32_t edges,
-                      int32_t width, int32_t height) {}
+void handle_configure(void*, ::wl_shell_surface*, std::uint32_t, std::int32_t, std::int32_t) {}
 
-void handle_popup_done(void* data, struct wl_shell_surface* shell_surface) {}
+void handle_popup_done(void*, ::wl_shell_surface*) {}
 
 const struct wl_shell_surface_listener shell_surface_listener = {handle_ping, handle_configure,
                                                                  handle_popup_done};
@@ -145,7 +142,7 @@ static void redraw(void* data, ::wl_callback* callback, std::uint32_t time) {
       const auto t1t2 = (t2 - t1) / std::chrono::nanoseconds(1);
       std::cout << std::setw(12) << t1t2 << std::endl;
 
-      ::nvgUpdateImage(ctx->vg, ctx->img, ctx->buffer.get());
+      ::nvgUpdateImage(ctx->vg, ctx->texture_id, ctx->buffer.get());
 
       buf.length = 1;
 
@@ -162,11 +159,14 @@ static void redraw(void* data, ::wl_callback* callback, std::uint32_t time) {
   ::glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   ::glClear(GL_COLOR_BUFFER_BIT);
 
-  ::nvgBeginFrame(ctx->vg, 1920, 1080, 1.0f);
+  const auto width = ctx->width;
+  const auto height = ctx->height;
+
+  ::nvgBeginFrame(ctx->vg, width, height, 1.0f);
   {
-    ::NVGpaint img = ::nvgImagePattern(ctx->vg, 0, 0, 1920, 1080, 0, ctx->img, 1.0f);
+    ::NVGpaint img = ::nvgImagePattern(ctx->vg, 0, 0, width, height, 0, ctx->texture_id, 1.0f);
     ::nvgBeginPath(ctx->vg);
-    ::nvgRect(ctx->vg, 0, 0, 1920, 1080);
+    ::nvgRect(ctx->vg, 0, 0, width, height);
     ::nvgFillPaint(ctx->vg, img);
     ::nvgFill(ctx->vg);
 
@@ -206,39 +206,45 @@ static void redraw(void* data, ::wl_callback* callback, std::uint32_t time) {
 
 auto main() -> int {
   window_context ctx{};
+  ctx.width = 1920;
+  ctx.height = 1080;
 
   ctx.video_fd = ::open("/dev/video0", O_RDWR | O_NONBLOCK);
+  if (ctx.video_fd < 0) {
+    perror_exit("open");
+  }
 
-  ::v4l2_capability cap_{};
   {
-    if (::ioctl(ctx.video_fd, VIDIOC_QUERYCAP, &cap_) == -1) {
+    ::v4l2_capability cap{};
+
+    if (::ioctl(ctx.video_fd, VIDIOC_QUERYCAP, &cap) == -1) {
       perror_exit("VIDIOC_QUERYCAP");
     }
 
-    if (!(cap_.capabilities & V4L2_CAP_VIDEO_CAPTURE_MPLANE)) {
-      std::exit(EXIT_FAILURE);
+    if (!(cap.capabilities & V4L2_CAP_VIDEO_CAPTURE_MPLANE)) {
+      return -1;
     }
 
-    if (!(cap_.capabilities & V4L2_CAP_STREAMING)) {
-      std::exit(EXIT_FAILURE);
+    if (!(cap.capabilities & V4L2_CAP_STREAMING)) {
+      return -1;
     }
   }
 
-  ::v4l2_format format_{};
   {
-    format_.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-    format_.fmt.pix_mp.width = 1920;
-    format_.fmt.pix_mp.height = 1080;
-    format_.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_RGB24;
-    format_.fmt.pix_mp.field = V4L2_FIELD_ANY;
-    format_.fmt.pix_mp.num_planes = 1;
-    format_.fmt.pix_mp.plane_fmt[0].bytesperline = 0;
+    ::v4l2_format format{};
+    format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+    format.fmt.pix_mp.width = ctx.width;
+    format.fmt.pix_mp.height = ctx.height;
+    format.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_RGB24;
+    format.fmt.pix_mp.field = V4L2_FIELD_ANY;
+    format.fmt.pix_mp.num_planes = 1;
+    format.fmt.pix_mp.plane_fmt[0].bytesperline = 0;
 
-    if (::ioctl(ctx.video_fd, VIDIOC_S_FMT, &format_) == -1) {
+    if (::ioctl(ctx.video_fd, VIDIOC_S_FMT, &format) == -1) {
       perror_exit("VIDIOC_S_FMT");
     }
 
-    if (::ioctl(ctx.video_fd, VIDIOC_G_FMT, &format_) == -1) {
+    if (::ioctl(ctx.video_fd, VIDIOC_G_FMT, &format) == -1) {
       perror_exit("VIDIOC_G_FMT");
     }
   }
@@ -246,11 +252,11 @@ auto main() -> int {
   {
     ::v4l2_requestbuffers req{};
     req.count = NUM_BUFFERS;
-    req.type = format_.type;
+    req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
     req.memory = V4L2_MEMORY_MMAP;
     if (::ioctl(ctx.video_fd, VIDIOC_REQBUFS, &req) == -1) {
       if (errno == EINVAL) {
-        std::exit(EXIT_FAILURE);
+        return -1;
       } else {
         perror_exit("VIDIOC_REQBUFS");
       }
@@ -268,10 +274,10 @@ auto main() -> int {
         perror_exit("VIDIOC_QUERYBUF");
       }
 
-      void* mem = ::mmap(0, buf.m.planes[0].length, PROT_READ | PROT_WRITE, MAP_SHARED,
+      void* mem = ::mmap(nullptr, buf.m.planes[0].length, PROT_READ | PROT_WRITE, MAP_SHARED,
                          ctx.video_fd, buf.m.planes[0].m.mem_offset);
       if (mem == MAP_FAILED) {
-        std::exit(EXIT_FAILURE);
+        perror_exit("mmap");
       }
 
       ctx.video_buffers.at(i) = static_cast<std::uint8_t*>(mem);
@@ -356,6 +362,7 @@ auto main() -> int {
 
   if (!::eglBindAPI(EGL_OPENGL_ES_API)) {
     std::cerr << "failed to bind EGL client API" << std::endl;
+    return -1;
   }
 
   ::EGLConfig configs;
@@ -365,7 +372,7 @@ auto main() -> int {
     return -1;
   }
 
-  ctx.egl_window = wl_egl_window_create(ctx.surface, 1920, 1080);
+  ctx.egl_window = wl_egl_window_create(ctx.surface, ctx.width, ctx.height);
   if (!ctx.egl_window) {
     std::cerr << "failed to create egl window" << std::endl;
     return -1;
@@ -381,7 +388,7 @@ auto main() -> int {
   }
 
   if (!::eglMakeCurrent(ctx.egl_display, ctx.egl_surface, ctx.egl_surface, ctx.egl_context)) {
-    //
+    return -1;
   }
 
   ctx.vg = ::nvgCreateGLES2(NVG_ANTIALIAS | NVG_STENCIL_STROKES);
@@ -392,8 +399,8 @@ auto main() -> int {
 
   ::nvgCreateFont(ctx.vg, "mono", "/usr/share/fonts/ttf/LiberationMono-Regular.ttf");
 
-  ctx.buffer = std::make_unique<std::uint8_t[]>(1920 * 1080 * 4);
-  ctx.img = ::nvgCreateImageRGBA(ctx.vg, 1920, 1080, 0, ctx.buffer.get());
+  ctx.buffer = std::make_unique<std::uint8_t[]>(ctx.width * ctx.height * 4);
+  ctx.texture_id = ::nvgCreateImageRGBA(ctx.vg, ctx.width, ctx.height, 0, ctx.buffer.get());
 
   redraw(&ctx, nullptr, 0);
 
