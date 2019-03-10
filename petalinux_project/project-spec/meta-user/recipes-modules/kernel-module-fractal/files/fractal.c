@@ -4,7 +4,6 @@
 #include <linux/bitops.h>
 #include <linux/clk.h>
 #include <linux/device.h>
-#include <linux/gpio/consumer.h>
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
@@ -31,7 +30,6 @@ struct fractal_device {
 	struct device *dev;
 	void __iomem *iomem;
 	struct clk *clk;
-	struct gpio_desc *rst_gpio;
 
 	struct v4l2_subdev subdev;
 	struct v4l2_mbus_framefmt format;
@@ -110,8 +108,9 @@ static int fractal_s_stream(struct v4l2_subdev *subdev, int enable)
 			    FRACTAL_REG_CTRL_AUTO_RESTART |
 			    FRACTAL_REG_CTRL_START);
 	} else {
-		gpiod_set_value_cansleep(fractal->rst_gpio, 0x1);
-		gpiod_set_value_cansleep(fractal->rst_gpio, 0x0);
+		fractal_clr(fractal, FRACTAL_REG_CTRL,
+			    FRACTAL_REG_CTRL_AUTO_RESTART |
+			    FRACTAL_REG_CTRL_START);
 	}
 
 	return 0;
@@ -265,14 +264,6 @@ static int fractal_probe(struct platform_device *dev)
 		return PTR_ERR(fractal->clk);
 
 	clk_prepare_enable(fractal->clk);
-
-	fractal->rst_gpio = devm_gpiod_get(&dev->dev, "reset", GPIOD_OUT_HIGH);
-	if (IS_ERR(fractal->rst_gpio)) {
-		ret = PTR_ERR(fractal->rst_gpio);
-		goto error;
-	}
-
-	gpiod_set_value_cansleep(fractal->rst_gpio, 0x0);
 
 	fractal->pads[0].flags = MEDIA_PAD_FL_SOURCE;
 

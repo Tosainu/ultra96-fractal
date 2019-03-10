@@ -3,8 +3,6 @@
 };
 
 &fractal_0 {
-	reset-gpios = <&gpio 172 1>;
-
 	ports {
 		#address-cells = <1>;
 		#size-cells = <0>;
