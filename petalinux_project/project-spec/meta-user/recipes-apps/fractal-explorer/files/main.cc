@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <memory>
 #include <string_view>
+#include <thread>
 #include <vector>
 
 #include <wayland-client.h>
@@ -59,6 +60,51 @@ struct window_context {
   int video_fd;
   std::array<std::uint8_t*, NUM_BUFFERS> video_buffers;
 };
+
+std::uint32_t double_to_fix32_4(double v) {
+  union {
+    double d;
+    std::uint64_t u;
+    struct {
+      std::uint64_t frac : 52;
+      std::uint64_t exp : 11;
+      std::uint64_t sign : 1;
+    } s;
+  } df;
+  df.d = v;
+
+  if ((df.u & 0x7ffffffffffffffful) == 0) {
+    return 0;
+  }
+
+  auto frac = static_cast<std::int64_t>(df.s.frac) | (1ul << 52);
+  auto exp = static_cast<int16_t>(df.s.exp) - 1023;
+  bool sign = df.s.sign;
+  if (sign) frac = -frac;
+
+  int ap_w2 = 52 + 2;
+  int ap_i2 = exp + 2;
+  int ap_f = 32 - 4;
+  int f2 = ap_w2 - ap_i2;
+
+  unsigned shift = f2 > ap_f ? f2 - ap_f : ap_f - f2;
+
+  if (f2 == ap_f) {
+    return frac;
+  } else if (f2 > ap_f) {
+    if (shift < ap_w2) {
+      return frac >> shift;
+    } else {
+      return df.s.sign ? -1 : 0;
+    }
+  } else {
+    if (shift < 32) {
+      return frac << shift;
+    } else {
+      return 0;
+    }
+  }
+}
 
 void handle_ping(void*, ::wl_shell_surface* shell_surface, std::uint32_t serial) {
   wl_shell_surface_pong(shell_surface, serial);
@@ -401,6 +447,32 @@ auto main() -> int {
 
   ctx.buffer = std::make_unique<std::uint8_t[]>(ctx.width * ctx.height * 4);
   ctx.texture_id = ::nvgCreateImageRGBA(ctx.vg, ctx.width, ctx.height, 0, ctx.buffer.get());
+
+  int fractal_reg_fd = ::open("/dev/mem", O_RDWR | O_SYNC);
+  if (fractal_reg_fd < 0) {
+    perror_exit("open");
+  }
+
+  auto fractal_reg =
+      reinterpret_cast<std::uint64_t*>(::mmap(nullptr, ::getpagesize(), PROT_READ | PROT_WRITE,
+                                              MAP_SHARED, fractal_reg_fd, 0xa0000000));
+  if (fractal_reg == MAP_FAILED) {
+    perror_exit("mmap");
+  }
+
+  std::thread th([fractal_reg] {
+    for (;;) {
+      for (int i = 1000; i < 9000; ++i) {
+        const auto t = (static_cast<double>(i) / 10000) * 6.28;
+        // cr
+        fractal_reg[6] = double_to_fix32_4(0.7885 * std::cos(t));
+        // ci
+        fractal_reg[7] = double_to_fix32_4(0.7885 * std::sin(t));
+
+        ::usleep(10000);
+      }
+    }
+  });
 
   redraw(&ctx, nullptr, 0);
 

@@ -4,7 +4,7 @@ APP_OBJS = main.o nanovg/src/nanovg.o
 
 CXXFLAGS += -std=c++17 -Wall -Wextra -isystem nanovg/src -DNDEBUG
 CPPFLAGS += -DNDEBUG
-LDLIBS += -lm -lwayland-client -lwayland-egl -lEGL -lGLESv2
+LDLIBS += -lm -lwayland-client -lwayland-egl -lEGL -lGLESv2 -pthread
 
 all: build
 
