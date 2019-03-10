@@ -34,8 +34,6 @@ extern "C" {
 #include <unistd.h>
 
 #include <linux/videodev2.h>
-
-#include <arm_neon.h>
 }
 
 using namespace std::string_view_literals;
@@ -129,14 +127,19 @@ static void redraw(void* data, ::wl_callback* callback, std::uint32_t time) {
 
       const auto t1 = std::chrono::steady_clock::now();
 
-      while (rgb < rgb_end) {
-        ::uint8x8x3_t vin = ::vld3_u8(rgb);
-        ::uint8x8_t valpha = ::vdup_n_u8(0xff);
-        ::uint8x8x4_t vout{vin.val[0], vin.val[1], vin.val[2], valpha};
-        ::vst4_u8(rgba, vout);
-        rgb += 24;
-        rgba += 32;
-      }
+      asm volatile(
+          "mov  w0, #0xff \n\t"
+          "dup  v3.8b, w0 \n\t"
+          "1:   \n\t"
+          "ld3  {v0.8b-v2.8b}, [%[src]] \n\t"
+          "add  %[src], %[src], #24 \n\t"
+          "cmp  %[end], %[src] \n\t"
+          "st4  {v0.8b-v3.8b}, [%[dst]] \n\t"
+          "add  %[dst], %[dst], #32 \n\t"
+          "bhi  1b"
+          : [src] "+r"(rgb), [dst] "+r"(rgba)
+          : [end] "r"(rgb_end)
+          : "w0", "v0", "v1", "v2", "v3");
 
       const auto t2 = std::chrono::steady_clock::now();
       const auto t1t2 = (t2 - t1) / std::chrono::nanoseconds(1);
