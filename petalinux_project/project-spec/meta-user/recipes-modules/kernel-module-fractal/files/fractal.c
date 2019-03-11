@@ -34,9 +34,6 @@ struct fractal_device {
 	struct v4l2_subdev subdev;
 	struct v4l2_mbus_framefmt format;
 	struct media_pad pads[1];
-
-	u32 fi_d;
-	u32 fi_n;
 };
 
 static inline u32 fractal_read(struct fractal_device *dev, u32 addr)
@@ -63,33 +60,6 @@ static inline struct fractal_device
 *get_fractal_device(struct v4l2_subdev *subdev)
 {
 	return container_of(subdev, struct fractal_device, subdev);
-}
-
-static int fractal_g_frame_interval(struct v4l2_subdev *subdev,
-				    struct v4l2_subdev_frame_interval *fi)
-{
-	struct fractal_device *fractal = get_fractal_device(subdev);
-
-	fi->interval.numerator = fractal->fi_n;
-	fi->interval.denominator = fractal->fi_d;
-
-	return 0;
-}
-
-static int fractal_s_frame_interval(struct v4l2_subdev *subdev,
-				    struct v4l2_subdev_frame_interval *fi)
-{
-	struct fractal_device *fractal = get_fractal_device(subdev);
-
-	if (!fi->interval.numerator || !fi->interval.denominator) {
-		fractal->fi_n = 1;
-		fractal->fi_d = 1;
-	} else {
-		fractal->fi_n = fi->interval.numerator;
-		fractal->fi_d = fi->interval.denominator;
-	}
-
-	return 0;
 }
 
 static int fractal_s_stream(struct v4l2_subdev *subdev, int enable)
@@ -214,8 +184,6 @@ static const struct v4l2_subdev_core_ops fractal_core_ops = {
 };
 
 static const struct v4l2_subdev_video_ops fractal_video_ops = {
-	.g_frame_interval = fractal_g_frame_interval,
-	.s_frame_interval = fractal_s_frame_interval,
 	.s_stream = fractal_s_stream,
 };
 
@@ -287,9 +255,6 @@ static int fractal_probe(struct platform_device *dev)
 		dev_err(&dev->dev, "failed to initialize pads\n");
 		goto error;
 	}
-
-	fractal->fi_n = 1;
-	fractal->fi_d = 15;
 
 	platform_set_drvdata(dev, fractal);
 
