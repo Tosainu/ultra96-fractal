@@ -1,0 +1,38 @@
+/include/ "system-conf.dtsi"
+/ {
+};
+
+&fractal_0 {
+	ports {
+		#address-cells = <1>;
+		#size-cells = <0>;
+
+		port@0 {
+			reg = <0>;
+			fractal_0_out_0: endpoint {
+				remote-endpoint = <&vcap_0_in_0>;
+			};
+		};
+	};
+};
+
+&amba_pl {
+	vcap_0: video_cap {
+		compatible = "xlnx,video";
+		dmas = <&axi_vdma_0 1>;
+		dma-names = "port0";
+
+		ports {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			port@0 {
+				reg = <0>;
+				direction = "input";
+				vcap_0_in_0: endpoint {
+					remote-endpoint = <&fractal_0_out_0>;
+				};
+			};
+		};
+	};
+};
