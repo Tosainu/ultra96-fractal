@@ -1,5 +1,10 @@
-// SPDX-License-Identifier: GPL-2.0 OR MIT
-/* Copyright (c) 2019 Tosainu. */
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (c) 2019 Tosainu.
+ *
+ * This implementation is based on Xilinx Test Pattern Generator driver.
+ * https://github.com/Xilinx/linux-xlnx/blob/xilinx-v2018.3/drivers/media/platform/xilinx/xilinx-tpg.c
+ */
 
 #include <linux/bitops.h>
 #include <linux/clk.h>
@@ -307,4 +312,4 @@ module_platform_driver(fractal_driver);
 
 MODULE_AUTHOR("Tosainu <tosainu.maple@gmail.com>");
 MODULE_DESCRIPTION("Fractal generator driver");
-MODULE_LICENSE("Dual MIT/GPL");
+MODULE_LICENSE("GPL v2");
