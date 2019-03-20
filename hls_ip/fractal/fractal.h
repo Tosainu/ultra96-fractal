@@ -16,7 +16,7 @@ static constexpr std::uint32_t BPP           = 24u;
 static constexpr std::uint8_t MAX_ITERATIONS = 255u;
 
 template <std::uint32_t N>
-using video_type = ap_axiu<BPP * N, N, 1, 1>;
+using video_type = ap_axiu<BPP * N, 1, 1, 1>;
 
 template <std::uint32_t N>
 using stream_type = hls::stream<video_type<N>>;
