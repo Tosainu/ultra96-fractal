@@ -241,7 +241,7 @@ static int fractal_probe(struct platform_device *dev)
 	fractal->pads[0].flags = MEDIA_PAD_FL_SOURCE;
 
 	fractal->format.code = MEDIA_BUS_FMT_RBG888_1X24;
-	fractal->format.field = V4L2_FIELD_NONE;;
+	fractal->format.field = V4L2_FIELD_NONE;
 	fractal->format.colorspace = V4L2_COLORSPACE_SRGB;
 	fractal->format.width = 1920;
 	fractal->format.height = 1080;
