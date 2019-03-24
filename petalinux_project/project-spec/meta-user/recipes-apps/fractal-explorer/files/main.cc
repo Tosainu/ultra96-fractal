@@ -30,12 +30,23 @@ extern "C" {
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <libdrm/drm_fourcc.h>
+
 #include <linux/videodev2.h>
 }
 
 using namespace std::string_view_literals;
 
 static constexpr std::uint32_t NUM_BUFFERS = 8;
+
+static ::PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR;
+static ::PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR;
+static ::PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
+
+template <class T>
+static inline T get_egl_proc(const std::string_view proc) {
+  return reinterpret_cast<T>(::eglGetProcAddress(proc.data()));
+}
 
 struct window_context {
   int width;
@@ -54,12 +65,43 @@ struct window_context {
   ::EGLSurface egl_surface;
 
   ::NVGcontext* vg;
-  int texture_id;
-  std::unique_ptr<std::uint8_t[]> buffer;
+
+  struct texture_context {
+    ::GLuint program;
+    ::GLuint a_position;
+    ::GLuint a_tex_coord;
+    ::GLuint s_texture;
+    ::GLuint textures[NUM_BUFFERS];
+  } texture;
 
   int video_fd;
-  std::array<std::uint8_t*, NUM_BUFFERS> video_buffers;
+  struct buffer_context {
+    std::uint8_t* ptr;
+    std::uint32_t length;
+    std::uint32_t offset;
+    int fd;
+  };
+  std::array<buffer_context, NUM_BUFFERS> video_buffers;
 };
+
+static ::GLuint load_shader(::GLenum type, const char* str) {
+  ::GLuint shader = ::glCreateShader(type);
+  if (!shader) {
+    return 0;
+  }
+
+  ::glShaderSource(shader, 1, &str, nullptr);
+  ::glCompileShader(shader);
+
+  ::GLint compiled;
+  ::glGetShaderiv(shader, GL_COMPILE_STATUS, &compiled);
+  if (!compiled) {
+    ::glDeleteShader(shader);
+    return 0;
+  }
+
+  return shader;
+}
 
 std::uint32_t double_to_fix32_4(double v) {
   union {
@@ -155,67 +197,63 @@ static void redraw(void* data, ::wl_callback* callback, std::uint32_t time) {
     ::wl_callback_destroy(callback);
   }
 
-  {
-    ::v4l2_plane planes[VIDEO_MAX_PLANES];
-
-    ::v4l2_buffer buf{};
-    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-    buf.memory = V4L2_MEMORY_MMAP;
-    buf.length = VIDEO_MAX_PLANES;
-    buf.m.planes = planes;
-    if (::ioctl(ctx->video_fd, VIDIOC_DQBUF, &buf) == 0) {
-      auto rgba = ctx->buffer.get();
-      auto rgb = ctx->video_buffers[buf.index];
-      const auto rgb_end = rgb + buf.m.planes[0].bytesused;
-
-      const auto t1 = std::chrono::steady_clock::now();
-
-      asm volatile(
-          "mov  w0, #0xff \n\t"
-          "dup  v3.8b, w0 \n\t"
-          "1:   \n\t"
-          "ld3  {v0.8b-v2.8b}, [%[src]] \n\t"
-          "add  %[src], %[src], #24 \n\t"
-          "cmp  %[end], %[src] \n\t"
-          "st4  {v0.8b-v3.8b}, [%[dst]] \n\t"
-          "add  %[dst], %[dst], #32 \n\t"
-          "bhi  1b"
-          : [src] "+r"(rgb), [dst] "+r"(rgba)
-          : [end] "r"(rgb_end)
-          : "w0", "v0", "v1", "v2", "v3");
-
-      const auto t2 = std::chrono::steady_clock::now();
-      const auto t1t2 = (t2 - t1) / std::chrono::nanoseconds(1);
-      std::cout << std::setw(12) << t1t2 << std::endl;
-
-      ::nvgUpdateImage(ctx->vg, ctx->texture_id, ctx->buffer.get());
-
-      buf.length = 1;
-
-      if (::ioctl(ctx->video_fd, VIDIOC_QBUF, &buf) == -1) {
-        perror_exit("VIDIOC_QBUF");
-      }
-    } else {
-      if (errno != EAGAIN) {
-        perror_exit("VIDIOC_DQBUF");
-      }
-    }
-  }
-
-  ::glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-  ::glClear(GL_COLOR_BUFFER_BIT);
-
   const auto width = ctx->width;
   const auto height = ctx->height;
 
+  ::v4l2_plane planes[VIDEO_MAX_PLANES];
+  ::v4l2_buffer buf{};
+  buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+  buf.memory = V4L2_MEMORY_MMAP;
+  buf.length = VIDEO_MAX_PLANES;
+  buf.m.planes = planes;
+  if (::ioctl(ctx->video_fd, VIDIOC_DQBUF, &buf) == -1) {
+    perror_exit("VIDIOC_DQBUF");
+  }
+
+  const auto t1 = std::chrono::steady_clock::now();
+
+  ::glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+  ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+  {
+    // clang-format off
+    static constexpr GLfloat tex_pos[] = {
+        -1.0f, 1.0f,  0.0f,
+        -1.0f, -1.0f, 0.0f,
+        1.0f,  -1.0f, 0.0f,
+        1.0f,  1.0f,  0.0f,
+    };
+
+    static constexpr GLfloat tex_coord[] = {
+        0.0f, 0.0f,
+        0.0f, 1.0f,
+        1.0f, 1.0f,
+        1.0f, 0.0f,
+    };
+
+    static constexpr GLushort indices[] = {
+      0, 1, 2,
+      0, 2, 3,
+    };
+    // clang-format on
+
+    const auto& t = ctx->texture;
+
+    ::glUseProgram(t.program);
+
+    ::glVertexAttribPointer(t.a_position, 3, GL_FLOAT, GL_FALSE, 0, tex_pos);
+    ::glVertexAttribPointer(t.a_tex_coord, 2, GL_FLOAT, GL_FALSE, 0, tex_coord);
+
+    ::glEnableVertexAttribArray(t.a_position);
+    ::glEnableVertexAttribArray(t.a_tex_coord);
+
+    ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, t.textures[buf.index]);
+    ::glUniform1i(t.s_texture, 0);
+    ::glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
+  }
+
   ::nvgBeginFrame(ctx->vg, width, height, 1.0f);
   {
-    ::NVGpaint img = ::nvgImagePattern(ctx->vg, 0, 0, width, height, 0, ctx->texture_id, 1.0f);
-    ::nvgBeginPath(ctx->vg);
-    ::nvgRect(ctx->vg, 0, 0, width, height);
-    ::nvgFillPaint(ctx->vg, img);
-    ::nvgFill(ctx->vg);
-
     ::nvgBeginPath(ctx->vg);
     ::nvgRect(ctx->vg, 32, 64, 436, 152);
     ::nvgFillColor(ctx->vg, nvgRGBA(32, 32, 32, 192));
@@ -245,6 +283,15 @@ static void redraw(void* data, ::wl_callback* callback, std::uint32_t time) {
   ::nvgEndFrame(ctx->vg);
 
   ::eglSwapBuffers(ctx->egl_display, ctx->egl_surface);
+  ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
+
+  if (::ioctl(ctx->video_fd, VIDIOC_QBUF, &buf) == -1) {
+    perror_exit("VIDIOC_QBUF");
+  }
+
+  const auto t2 = std::chrono::steady_clock::now();
+  const auto t1t2 = (t2 - t1) / std::chrono::nanoseconds(1);
+  std::cout << std::setw(12) << t1t2 << std::endl;
 
   ctx->redraw_cb = ::wl_surface_frame(ctx->surface);
   ::wl_callback_add_listener(ctx->redraw_cb, &listener, ctx);
@@ -255,7 +302,7 @@ auto main() -> int {
   ctx.width = 1920;
   ctx.height = 1080;
 
-  ctx.video_fd = ::open("/dev/video0", O_RDWR | O_NONBLOCK);
+  ctx.video_fd = ::open("/dev/video0", O_RDWR);
   if (ctx.video_fd < 0) {
     perror_exit("open");
   }
@@ -281,7 +328,7 @@ auto main() -> int {
     format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
     format.fmt.pix_mp.width = ctx.width;
     format.fmt.pix_mp.height = ctx.height;
-    format.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_RGB24;
+    format.fmt.pix_mp.pixelformat = v4l2_fourcc('X', 'B', 'G', 'R');
     format.fmt.pix_mp.field = V4L2_FIELD_ANY;
     format.fmt.pix_mp.num_planes = 1;
     format.fmt.pix_mp.plane_fmt[0].bytesperline = 0;
@@ -326,27 +373,29 @@ auto main() -> int {
         perror_exit("mmap");
       }
 
-      ctx.video_buffers.at(i) = static_cast<std::uint8_t*>(mem);
-      std::printf("buffer%d @ %p, length: %u\n", i, mem, buf.m.planes[0].length);
-    }
+      ::v4l2_exportbuffer exbuf{};
+      exbuf.index = i;
+      exbuf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+      exbuf.plane = 0;
+      if (::ioctl(ctx.video_fd, VIDIOC_EXPBUF, &exbuf) == -1) {
+        perror_exit("VIDIOC_EXPBUF");
+      }
 
-    for (auto i = 0u; i < req.count; ++i) {
-      ::v4l2_plane planes[VIDEO_MAX_PLANES];
-      ::v4l2_buffer buf{};
-      buf.index = i;
-      buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-      buf.memory = V4L2_MEMORY_MMAP;
-      buf.length = 1;
-      buf.m.planes = planes;
+      auto& bufinfo = ctx.video_buffers.at(i);
+      bufinfo = {
+          static_cast<std::uint8_t*>(mem), // mem
+          buf.m.planes[0].length,          // length
+          buf.m.planes[0].data_offset,     // offset
+          exbuf.fd                         // fd
+      };
+
+      std::printf("buffer%d @ %p, length: %u, offset: %u, fd: %d\n", i, bufinfo.ptr, bufinfo.length,
+                  bufinfo.offset, bufinfo.fd);
+
       if (::ioctl(ctx.video_fd, VIDIOC_QBUF, &buf) == -1) {
         perror_exit("VIDIOC_QBUF");
       }
     }
-  }
-
-  ::v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-  if (::ioctl(ctx.video_fd, VIDIOC_STREAMON, &type) == -1) {
-    perror_exit("VIDIOC_STREAMON");
   }
 
   // ------- Wayland -------
@@ -437,6 +486,114 @@ auto main() -> int {
     return -1;
   }
 
+  if (!(::eglCreateImageKHR = get_egl_proc<::PFNEGLCREATEIMAGEKHRPROC>("eglCreateImageKHR"sv))) {
+    std::cerr << "eglCreateImageKHR" << std::endl;
+    return -1;
+  }
+
+  if (!(::eglDestroyImageKHR = get_egl_proc<::PFNEGLDESTROYIMAGEKHRPROC>("eglDestroyImageKHR"sv))) {
+    std::cerr << "eglDestroyImageKHR" << std::endl;
+    return -1;
+  }
+
+  if (!(::glEGLImageTargetTexture2DOES = get_egl_proc<::PFNGLEGLIMAGETARGETTEXTURE2DOESPROC>(
+            "glEGLImageTargetTexture2DOES"sv))) {
+    std::cerr << "glEGLImageTargetTexture2DOES" << std::endl;
+    return -1;
+  }
+
+  {
+    auto vshader = load_shader(GL_VERTEX_SHADER, R"(
+attribute vec4 a_position;
+attribute vec2 a_texCoord;
+varying vec2 v_texCoord;
+void main()
+{
+   gl_Position = a_position;
+   v_texCoord = a_texCoord;
+}
+)");
+    if (!vshader) {
+      std::cerr << "failed to load vertex shader" << std::endl;
+      return -1;
+    }
+
+    auto fshader = load_shader(GL_FRAGMENT_SHADER, R"(
+#extension GL_OES_EGL_image_external: require
+precision mediump float;
+varying vec2 v_texCoord;
+uniform samplerExternalOES s_texture;
+void main()
+{
+  gl_FragColor = texture2D(s_texture, v_texCoord);
+}
+)");
+    if (!fshader) {
+      std::cerr << "failed to load fragment shader" << std::endl;
+      ::glDeleteShader(vshader);
+      return -1;
+    }
+
+    ctx.texture.program = ::glCreateProgram();
+    if (!ctx.texture.program) {
+      std::cerr << "failed to create glprogram" << std::endl;
+      ::glDeleteShader(vshader);
+      ::glDeleteShader(fshader);
+      return -1;
+    }
+
+    ::glAttachShader(ctx.texture.program, vshader);
+    ::glAttachShader(ctx.texture.program, fshader);
+    ::glLinkProgram(ctx.texture.program);
+
+    ::GLint linked{};
+    ::glGetProgramiv(ctx.texture.program, GL_LINK_STATUS, &linked);
+
+    ::glDeleteShader(vshader);
+    ::glDeleteShader(fshader);
+
+    if (!linked) {
+      std::cerr << "failed to link glprogram" << std::endl;
+      ::glDeleteProgram(ctx.texture.program);
+      return -1;
+    }
+
+    ctx.texture.a_position = ::glGetAttribLocation(ctx.texture.program, "a_position");
+    ctx.texture.a_tex_coord = ::glGetAttribLocation(ctx.texture.program, "a_texCoord");
+    ctx.texture.s_texture = ::glGetUniformLocation(ctx.texture.program, "s_texture");
+
+    ::glGenTextures(NUM_BUFFERS, ctx.texture.textures);
+    for (auto i = 0u; i < NUM_BUFFERS; ++i) {
+      // clang-format off
+      ::EGLint attrs[] = {
+        EGL_WIDTH,                     ctx.width,
+        EGL_HEIGHT,                    ctx.height,
+        EGL_LINUX_DRM_FOURCC_EXT,      DRM_FORMAT_ABGR8888,
+        EGL_DMA_BUF_PLANE0_FD_EXT,     ctx.video_buffers[i].fd,
+        EGL_DMA_BUF_PLANE0_OFFSET_EXT, ctx.video_buffers[i].offset,
+        EGL_DMA_BUF_PLANE0_PITCH_EXT,  ctx.width * 4,
+        EGL_NONE
+      };
+      // clang-format on
+
+      ::EGLImageKHR image = ::eglCreateImageKHR(ctx.egl_display, EGL_NO_CONTEXT,
+                                                EGL_LINUX_DMA_BUF_EXT, nullptr, attrs);
+      if (image == EGL_NO_IMAGE_KHR) {
+        std::cerr << "failed to create image" << std::endl;
+        return -1;
+      }
+
+      ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, ctx.texture.textures[i]);
+      ::glEGLImageTargetTexture2DOES(GL_TEXTURE_EXTERNAL_OES, image);
+      ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
+    }
+  }
+
+  ::v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+  if (::ioctl(ctx.video_fd, VIDIOC_STREAMON, &type) == -1) {
+    perror_exit("VIDIOC_STREAMON");
+  }
+
   ctx.vg = ::nvgCreateGLES2(NVG_ANTIALIAS | NVG_STENCIL_STROKES);
   if (!ctx.vg) {
     std::cerr << "failed to initialize nanovg" << std::endl;
@@ -444,9 +601,6 @@ auto main() -> int {
   }
 
   ::nvgCreateFont(ctx.vg, "mono", "/usr/share/fonts/ttf/LiberationMono-Regular.ttf");
-
-  ctx.buffer = std::make_unique<std::uint8_t[]>(ctx.width * ctx.height * 4);
-  ctx.texture_id = ::nvgCreateImageRGBA(ctx.vg, ctx.width, ctx.height, 0, ctx.buffer.get());
 
   int fractal_reg_fd = ::open("/dev/mem", O_RDWR | O_SYNC);
   if (fractal_reg_fd < 0) {
