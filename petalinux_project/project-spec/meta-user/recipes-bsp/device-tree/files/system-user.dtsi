@@ -1,5 +1,8 @@
 /include/ "system-conf.dtsi"
 / {
+	chosen {
+		bootargs = "earlycon clk_ignore_unused cma=512M";
+	};
 };
 
 &fractal_0 {
