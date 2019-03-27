@@ -213,7 +213,7 @@ static void redraw(void* data, ::wl_callback* callback, std::uint32_t time) {
   const auto t1 = std::chrono::steady_clock::now();
 
   ::glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
-  ::glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+  ::glClear(GL_COLOR_BUFFER_BIT);
 
   {
     // clang-format off
