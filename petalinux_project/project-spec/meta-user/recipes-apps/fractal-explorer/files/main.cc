@@ -250,6 +250,10 @@ static void redraw(void* data, ::wl_callback* callback, std::uint32_t time) {
     ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, t.textures[buf.index]);
     ::glUniform1i(t.s_texture, 0);
     ::glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
+
+    ::glDisableVertexAttribArray(t.a_position);
+    ::glDisableVertexAttribArray(t.a_tex_coord);
+    ::glUseProgram(0);
   }
 
   ::nvgBeginFrame(ctx->vg, width, height, 1.0f);
