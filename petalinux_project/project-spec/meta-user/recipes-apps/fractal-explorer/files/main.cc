@@ -52,6 +52,8 @@ struct window_context {
   int width;
   int height;
 
+  ::wl_display* display;
+
   ::wl_compositor* compositor;
   ::wl_egl_window* egl_window;
   ::wl_region* region;
@@ -404,18 +406,18 @@ auto main() -> int {
 
   // ------- Wayland -------
 
-  ::wl_display* display = ::wl_display_connect(nullptr);
-  if (!display) {
+  ctx.display = ::wl_display_connect(nullptr);
+  if (!ctx.display) {
     std::cerr << "failed to connect display" << std::endl;
     return -1;
   }
 
-  ::wl_registry* registry = ::wl_display_get_registry(display);
+  ::wl_registry* registry = ::wl_display_get_registry(ctx.display);
 
   ::wl_registry_add_listener(registry, &registry_listener, &ctx);
 
-  ::wl_display_dispatch(display);
-  ::wl_display_roundtrip(display);
+  ::wl_display_dispatch(ctx.display);
+  ::wl_display_roundtrip(ctx.display);
   if (!ctx.compositor || !ctx.shell) {
     std::cerr << "failed to find compositor or shell" << std::endl;
     return -1;
@@ -448,7 +450,7 @@ auto main() -> int {
     EGL_NONE};
   // clang-format on
 
-  ctx.egl_display = ::eglGetDisplay(static_cast<::EGLNativeDisplayType>(display));
+  ctx.egl_display = ::eglGetDisplay(static_cast<::EGLNativeDisplayType>(ctx.display));
   if (!ctx.egl_display) {
     std::cerr << "failed to create egl display" << std::endl;
     return -1;
@@ -634,8 +636,8 @@ void main()
 
   redraw(&ctx, nullptr, 0);
 
-  while (::wl_display_dispatch(display) != -1)
+  while (::wl_display_dispatch(ctx.display) != -1)
     ;
 
-  ::wl_display_disconnect(display);
+  ::wl_display_disconnect(ctx.display);
 }
