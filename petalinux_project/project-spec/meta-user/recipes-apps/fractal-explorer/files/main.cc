@@ -25,6 +25,7 @@
 
 extern "C" {
 #include <fcntl.h>
+#include <sys/epoll.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/types.h>
@@ -84,6 +85,10 @@ struct window_context {
     int fd;
   };
   std::array<buffer_context, NUM_BUFFERS> video_buffers;
+
+  bool running;
+  int epoll_fd;
+  int display_fd;
 };
 
 static ::GLuint load_shader(::GLenum type, const char* str) {
@@ -301,6 +306,33 @@ static void redraw(void* data, ::wl_callback* callback, std::uint32_t time) {
 
   ctx->redraw_cb = ::wl_surface_frame(ctx->surface);
   ::wl_callback_add_listener(ctx->redraw_cb, &listener, ctx);
+}
+
+static void handle_display_events(window_context* ctx, std::uint32_t events) {
+  if (events & EPOLLERR || events & EPOLLHUP) {
+    ctx->running = false;
+    return;
+  }
+
+  if (events & EPOLLIN) {
+    if (::wl_display_dispatch(ctx->display) == -1) {
+      ctx->running = false;
+      return;
+    }
+  }
+
+  if (events & EPOLLOUT) {
+    int ret = ::wl_display_flush(ctx->display);
+    if (ret == 0) {
+      ::epoll_event ep{};
+      ep.events = EPOLLIN | EPOLLERR | EPOLLHUP;
+      ep.data.ptr = ctx;
+      ::epoll_ctl(ctx->epoll_fd, EPOLL_CTL_MOD, ctx->display_fd, &ep);
+    } else if (ret == -1 && errno != EAGAIN) {
+      ctx->running = false;
+      return;
+    }
+  }
 }
 
 auto main() -> int {
@@ -608,6 +640,19 @@ void main()
 
   ::nvgCreateFont(ctx.vg, "mono", "/usr/share/fonts/ttf/LiberationMono-Regular.ttf");
 
+  ctx.epoll_fd = ::epoll_create1(EPOLL_CLOEXEC);
+  if (ctx.epoll_fd < 0) {
+    perror_exit("epoll_create1");
+  }
+
+  ctx.display_fd = ::wl_display_get_fd(ctx.display);
+  {
+    ::epoll_event ep{};
+    ep.events = EPOLLIN | EPOLLERR | EPOLLHUP;
+    ep.data.ptr = reinterpret_cast<void*>(handle_display_events);
+    ::epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.display_fd, &ep);
+  }
+
   int fractal_reg_fd = ::open("/dev/mem", O_RDWR | O_SYNC);
   if (fractal_reg_fd < 0) {
     perror_exit("open");
@@ -636,8 +681,30 @@ void main()
 
   redraw(&ctx, nullptr, 0);
 
-  while (::wl_display_dispatch(ctx.display) != -1)
-    ;
+  ctx.running = true;
+  while (1) {
+    ::wl_display_dispatch_pending(ctx.display);
+    if (!ctx.running) {
+      break;
+    }
+
+    int ret = ::wl_display_flush(ctx.display);
+    if (ret < 0 && errno == EAGAIN) {
+      ::epoll_event ep{};
+      ep.events = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP;
+      ep.data.ptr = &ctx;
+      ::epoll_ctl(ctx.epoll_fd, EPOLL_CTL_MOD, ctx.display_fd, &ep);
+    } else if (ret < 0) {
+      break;
+    }
+
+    ::epoll_event ep[16];
+    int count = ::epoll_wait(ctx.epoll_fd, ep, 16, -1);
+    for (int i = 0; i < count; ++i) {
+      using handler_type = void (*)(window_context*, std::uint32_t);
+      reinterpret_cast<handler_type>(ep[i].data.ptr)(&ctx, ep[i].events);
+    }
+  }
 
   ::wl_display_disconnect(ctx.display);
 }
