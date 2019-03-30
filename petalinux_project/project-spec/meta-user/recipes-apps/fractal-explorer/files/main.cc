@@ -137,6 +137,48 @@ static ::GLuint load_shader(::GLenum type, const char* str) {
   return shader;
 }
 
+static ::GLuint create_gl_program(const std::string_view vshader_src,
+                                  const std::string_view fshader_src) {
+  ::GLuint vshader = load_shader(GL_VERTEX_SHADER, vshader_src.data());
+  if (!vshader) {
+    std::cerr << "create_gl_program: failed to load vertex shader" << std::endl;
+    return 0;
+  }
+
+  ::GLuint fshader = load_shader(GL_FRAGMENT_SHADER, fshader_src.data());
+  if (!fshader) {
+    std::cerr << "create_gl_program: failed to load fragment shader" << std::endl;
+    ::glDeleteShader(vshader);
+    return 0;
+  }
+
+  ::GLuint program = ::glCreateProgram();
+  if (!program) {
+    std::cerr << "create_gl_program: failed to create glprogram" << std::endl;
+    ::glDeleteShader(vshader);
+    ::glDeleteShader(fshader);
+    return 0;
+  }
+
+  ::glAttachShader(program, vshader);
+  ::glAttachShader(program, fshader);
+  ::glLinkProgram(program);
+
+  ::GLint linked{};
+  ::glGetProgramiv(program, GL_LINK_STATUS, &linked);
+
+  ::glDeleteShader(vshader);
+  ::glDeleteShader(fshader);
+
+  if (!linked) {
+    std::cerr << "create_gl_program: failed to link glprogram" << std::endl;
+    ::glDeleteProgram(program);
+    return 0;
+  }
+
+  return program;
+}
+
 std::uint32_t double_to_fix32_4(double v) {
   union {
     double d;
@@ -570,48 +612,16 @@ auto main() -> int {
     return -1;
   }
 
+  ctx.texture.program = create_gl_program(vertex_shader_src, fragment_shader_src);
+  if (!ctx.texture.program) {
+    return -1;
+  }
+
+  ctx.texture.a_position = ::glGetAttribLocation(ctx.texture.program, "a_position");
+  ctx.texture.a_tex_coord = ::glGetAttribLocation(ctx.texture.program, "a_texCoord");
+  ctx.texture.s_texture = ::glGetUniformLocation(ctx.texture.program, "s_texture");
+
   {
-    auto vshader = load_shader(GL_VERTEX_SHADER, vertex_shader_src.data());
-    if (!vshader) {
-      std::cerr << "failed to load vertex shader" << std::endl;
-      return -1;
-    }
-
-    auto fshader = load_shader(GL_FRAGMENT_SHADER, fragment_shader_src.data());
-    if (!fshader) {
-      std::cerr << "failed to load fragment shader" << std::endl;
-      ::glDeleteShader(vshader);
-      return -1;
-    }
-
-    ctx.texture.program = ::glCreateProgram();
-    if (!ctx.texture.program) {
-      std::cerr << "failed to create glprogram" << std::endl;
-      ::glDeleteShader(vshader);
-      ::glDeleteShader(fshader);
-      return -1;
-    }
-
-    ::glAttachShader(ctx.texture.program, vshader);
-    ::glAttachShader(ctx.texture.program, fshader);
-    ::glLinkProgram(ctx.texture.program);
-
-    ::GLint linked{};
-    ::glGetProgramiv(ctx.texture.program, GL_LINK_STATUS, &linked);
-
-    ::glDeleteShader(vshader);
-    ::glDeleteShader(fshader);
-
-    if (!linked) {
-      std::cerr << "failed to link glprogram" << std::endl;
-      ::glDeleteProgram(ctx.texture.program);
-      return -1;
-    }
-
-    ctx.texture.a_position = ::glGetAttribLocation(ctx.texture.program, "a_position");
-    ctx.texture.a_tex_coord = ::glGetAttribLocation(ctx.texture.program, "a_texCoord");
-    ctx.texture.s_texture = ::glGetUniformLocation(ctx.texture.program, "s_texture");
-
     ::glGenTextures(num_buffers, ctx.texture.textures);
     for (auto i = 0u; i < num_buffers; ++i) {
       // clang-format off
