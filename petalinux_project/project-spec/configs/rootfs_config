@@ -4379,8 +4379,6 @@ CONFIG_imagefeature-hwcodecs=y
 # apps 
 #
 CONFIG_fractal-explorer=y
-# CONFIG_gpio-demo is not set
-# CONFIG_peekpoke is not set
 
 #
 # modules 
