@@ -2,8 +2,8 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
-#include <iostream>
 #include <iomanip>
+#include <iostream>
 #include <memory>
 #include <string_view>
 #include <thread>
@@ -38,7 +38,29 @@ extern "C" {
 
 using namespace std::string_view_literals;
 
-static constexpr std::uint32_t NUM_BUFFERS = 8;
+static constexpr std::uint32_t num_buffers = 8;
+
+static constexpr auto vertex_shader_src = R"(
+attribute vec4 a_position;
+attribute vec2 a_texCoord;
+varying vec2 v_texCoord;
+void main()
+{
+   gl_Position = a_position;
+   v_texCoord = a_texCoord;
+}
+)"sv;
+
+static constexpr auto fragment_shader_src = R"(
+#extension GL_OES_EGL_image_external: require
+precision mediump float;
+varying vec2 v_texCoord;
+uniform samplerExternalOES s_texture;
+void main()
+{
+  gl_FragColor = texture2D(s_texture, v_texCoord);
+}
+)"sv;
 
 static ::PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR;
 static ::PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR;
@@ -74,7 +96,7 @@ struct window_context {
     ::GLuint a_position;
     ::GLuint a_tex_coord;
     ::GLuint s_texture;
-    ::GLuint textures[NUM_BUFFERS];
+    ::GLuint textures[num_buffers];
   } texture;
 
   int video_fd;
@@ -84,12 +106,17 @@ struct window_context {
     std::uint32_t offset;
     int fd;
   };
-  std::array<buffer_context, NUM_BUFFERS> video_buffers;
+  std::array<buffer_context, num_buffers> video_buffers;
 
   bool running;
   int epoll_fd;
   int display_fd;
 };
+
+static inline void perror_exit(std::string_view s) {
+  std::perror(s.data());
+  std::exit(EXIT_FAILURE);
+}
 
 static ::GLuint load_shader(::GLenum type, const char* str) {
   ::GLuint shader = ::glCreateShader(type);
@@ -135,8 +162,7 @@ std::uint32_t double_to_fix32_4(double v) {
   int ap_i2 = exp + 2;
   int ap_f = 32 - 4;
   int f2 = ap_w2 - ap_i2;
-
-  unsigned shift = f2 > ap_f ? f2 - ap_f : ap_f - f2;
+  int shift = f2 > ap_f ? f2 - ap_f : ap_f - f2;
 
   if (f2 == ap_f) {
     return frac;
@@ -155,41 +181,48 @@ std::uint32_t double_to_fix32_4(double v) {
   }
 }
 
-void handle_ping(void*, ::wl_shell_surface* shell_surface, std::uint32_t serial) {
+void shell_surface_handle_ping([[maybe_unused]] void* data, ::wl_shell_surface* shell_surface,
+                               std::uint32_t serial) {
   wl_shell_surface_pong(shell_surface, serial);
 }
 
-void handle_configure(void*, ::wl_shell_surface*, std::uint32_t, std::int32_t, std::int32_t) {}
+void shell_surface_handle_configure([[maybe_unused]] void* data,
+                                    [[maybe_unused]] ::wl_shell_surface* shell_surface,
+                                    [[maybe_unused]] std::uint32_t edges,
+                                    [[maybe_unused]] std::int32_t width,
+                                    [[maybe_unused]] std::int32_t height) {}
 
-void handle_popup_done(void*, ::wl_shell_surface*) {}
+void shell_surface_handle_popup_done([[maybe_unused]] void* data,
+                                     [[maybe_unused]] ::wl_shell_surface* shell_surface) {}
 
-const struct wl_shell_surface_listener shell_surface_listener = {handle_ping, handle_configure,
-                                                                 handle_popup_done};
+const struct wl_shell_surface_listener shell_surface_listener = {
+    shell_surface_handle_ping,
+    shell_surface_handle_configure,
+    shell_surface_handle_popup_done,
+};
 
-static void registry_handle_global(void* data, ::wl_registry* registry, std::uint32_t id,
-                                   const char* interface,
-                                   [[maybe_unused]] std::uint32_t version) {
+static void registry_handle_global(void* data, ::wl_registry* registry, std::uint32_t name,
+                                   const char* interface, [[maybe_unused]] std::uint32_t version) {
   const auto ifname = std::string_view{interface};
   auto ctx = static_cast<::window_context*>(data);
 
   if (ifname == "wl_compositor"sv) {
     ctx->compositor = static_cast<::wl_compositor*>(
-        ::wl_registry_bind(registry, id, &wl_compositor_interface, 1));
+        ::wl_registry_bind(registry, name, &wl_compositor_interface, 1));
   } else if (ifname == "wl_shell"sv) {
     ctx->shell =
-        static_cast<::wl_shell*>(::wl_registry_bind(registry, id, &wl_shell_interface, 1));
+        static_cast<::wl_shell*>(::wl_registry_bind(registry, name, &wl_shell_interface, 1));
   }
 }
 
-static void registry_handle_global_remove(void*, ::wl_registry*, uint32_t) {}
+static void registry_handle_global_remove([[maybe_unused]] void* data,
+                                          [[maybe_unused]] ::wl_registry* registry,
+                                          [[maybe_unused]] uint32_t name) {}
 
-static const ::wl_registry_listener registry_listener = {registry_handle_global,
-                                                         registry_handle_global_remove};
-
-static inline void perror_exit(std::string_view s) {
-  std::perror(s.data());
-  std::exit(EXIT_FAILURE);
-}
+static const ::wl_registry_listener registry_listener = {
+    registry_handle_global,
+    registry_handle_global_remove,
+};
 
 static void redraw(void* data, ::wl_callback* callback, std::uint32_t time);
 
@@ -197,7 +230,7 @@ static const ::wl_callback_listener listener = {
     redraw,
 };
 
-static void redraw(void* data, ::wl_callback* callback, std::uint32_t time) {
+static void redraw(void* data, ::wl_callback* callback, [[maybe_unused]] std::uint32_t time) {
   ::window_context* ctx = reinterpret_cast<::window_context*>(data);
 
   if (callback) {
@@ -382,7 +415,7 @@ auto main() -> int {
 
   {
     ::v4l2_requestbuffers req{};
-    req.count = NUM_BUFFERS;
+    req.count = num_buffers;
     req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
     req.memory = V4L2_MEMORY_MMAP;
     if (::ioctl(ctx.video_fd, VIDIOC_REQBUFS, &req) == -1) {
@@ -436,8 +469,6 @@ auto main() -> int {
     }
   }
 
-  // ------- Wayland -------
-
   ctx.display = ::wl_display_connect(nullptr);
   if (!ctx.display) {
     std::cerr << "failed to connect display" << std::endl;
@@ -445,7 +476,6 @@ auto main() -> int {
   }
 
   ::wl_registry* registry = ::wl_display_get_registry(ctx.display);
-
   ::wl_registry_add_listener(registry, &registry_listener, &ctx);
 
   ::wl_display_dispatch(ctx.display);
@@ -474,12 +504,13 @@ auto main() -> int {
     EGL_ALPHA_SIZE,      1,
     EGL_DEPTH_SIZE,      1,
     EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-    EGL_NONE
+    EGL_NONE,
   };
 
   static const ::EGLint context_attribs[] = {
     EGL_CONTEXT_CLIENT_VERSION, 2,
-    EGL_NONE};
+    EGL_NONE,
+  };
   // clang-format on
 
   ctx.egl_display = ::eglGetDisplay(static_cast<::EGLNativeDisplayType>(ctx.display));
@@ -498,7 +529,7 @@ auto main() -> int {
     return -1;
   }
 
-  ::EGLConfig configs;
+  ::EGLConfig configs{};
   ::EGLint num_configs{};
   ::eglChooseConfig(ctx.egl_display, config_attribs, &configs, 1, &num_configs);
   if (!num_configs) {
@@ -511,8 +542,7 @@ auto main() -> int {
     return -1;
   }
 
-  ctx.egl_context =
-      ::eglCreateContext(ctx.egl_display, configs, EGL_NO_CONTEXT, context_attribs);
+  ctx.egl_context = ::eglCreateContext(ctx.egl_display, configs, EGL_NO_CONTEXT, context_attribs);
 
   ctx.egl_surface = ::eglCreateWindowSurface(
       ctx.egl_display, configs, static_cast<::EGLNativeWindowType>(ctx.egl_window), nullptr);
@@ -541,31 +571,13 @@ auto main() -> int {
   }
 
   {
-    auto vshader = load_shader(GL_VERTEX_SHADER, R"(
-attribute vec4 a_position;
-attribute vec2 a_texCoord;
-varying vec2 v_texCoord;
-void main()
-{
-   gl_Position = a_position;
-   v_texCoord = a_texCoord;
-}
-)");
+    auto vshader = load_shader(GL_VERTEX_SHADER, vertex_shader_src.data());
     if (!vshader) {
       std::cerr << "failed to load vertex shader" << std::endl;
       return -1;
     }
 
-    auto fshader = load_shader(GL_FRAGMENT_SHADER, R"(
-#extension GL_OES_EGL_image_external: require
-precision mediump float;
-varying vec2 v_texCoord;
-uniform samplerExternalOES s_texture;
-void main()
-{
-  gl_FragColor = texture2D(s_texture, v_texCoord);
-}
-)");
+    auto fshader = load_shader(GL_FRAGMENT_SHADER, fragment_shader_src.data());
     if (!fshader) {
       std::cerr << "failed to load fragment shader" << std::endl;
       ::glDeleteShader(vshader);
@@ -600,15 +612,15 @@ void main()
     ctx.texture.a_tex_coord = ::glGetAttribLocation(ctx.texture.program, "a_texCoord");
     ctx.texture.s_texture = ::glGetUniformLocation(ctx.texture.program, "s_texture");
 
-    ::glGenTextures(NUM_BUFFERS, ctx.texture.textures);
-    for (auto i = 0u; i < NUM_BUFFERS; ++i) {
+    ::glGenTextures(num_buffers, ctx.texture.textures);
+    for (auto i = 0u; i < num_buffers; ++i) {
       // clang-format off
       ::EGLint attrs[] = {
         EGL_WIDTH,                     ctx.width,
         EGL_HEIGHT,                    ctx.height,
         EGL_LINUX_DRM_FOURCC_EXT,      DRM_FORMAT_ABGR8888,
         EGL_DMA_BUF_PLANE0_FD_EXT,     ctx.video_buffers[i].fd,
-        EGL_DMA_BUF_PLANE0_OFFSET_EXT, ctx.video_buffers[i].offset,
+        EGL_DMA_BUF_PLANE0_OFFSET_EXT, static_cast<::EGLint>(ctx.video_buffers[i].offset),
         EGL_DMA_BUF_PLANE0_PITCH_EXT,  ctx.width * 4,
         EGL_NONE
       };
@@ -658,9 +670,8 @@ void main()
     perror_exit("open");
   }
 
-  auto fractal_reg =
-      reinterpret_cast<std::uint64_t*>(::mmap(nullptr, ::getpagesize(), PROT_READ | PROT_WRITE,
-                                              MAP_SHARED, fractal_reg_fd, 0xa0000000));
+  auto fractal_reg = reinterpret_cast<std::uint64_t*>(::mmap(
+      nullptr, ::getpagesize(), PROT_READ | PROT_WRITE, MAP_SHARED, fractal_reg_fd, 0xa0000000));
   if (fractal_reg == MAP_FAILED) {
     perror_exit("mmap");
   }
