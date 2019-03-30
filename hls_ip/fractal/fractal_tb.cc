@@ -47,9 +47,9 @@ void split_stream(stream_type<N>& in, stream_type<1u>& out) {
     in >> pp;
     for (std::uint32_t j = 0; j < N; ++j) {
       video_type<1u> p{};
-      p.data = pp.data((j + 1) * 24 - 1, j * 24);
+      p.data = pp.data((j + 1) * BPP - 1, j * BPP);
       p.keep = -1;
-      p.user = pp.user[j];
+      p.user = j == 0 && pp.user;
       p.last = j == (N - 1) && pp.last;
       out << p;
     }
