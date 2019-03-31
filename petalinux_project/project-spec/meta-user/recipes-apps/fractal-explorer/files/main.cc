@@ -664,6 +664,7 @@ auto main() -> int {
     for (auto i = 0u; i < num_buffers; ++i) {
       // clang-format off
       ::EGLint attrs[] = {
+        EGL_IMAGE_PRESERVED_KHR,       EGL_TRUE,
         EGL_WIDTH,                     ctx.width,
         EGL_HEIGHT,                    ctx.height,
         EGL_LINUX_DRM_FOURCC_EXT,      DRM_FORMAT_ABGR8888,
