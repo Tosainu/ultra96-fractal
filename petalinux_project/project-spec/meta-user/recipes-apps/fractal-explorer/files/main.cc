@@ -85,19 +85,21 @@ struct window_context {
   ::wl_surface* surface;
   ::wl_callback* redraw_cb;
 
-  ::EGLDisplay egl_display;
-  ::EGLContext egl_context;
-  ::EGLSurface egl_surface;
+  struct {
+    ::EGLDisplay display;
+    ::EGLContext context;
+    ::EGLSurface surface;
+  } egl;
 
-  ::NVGcontext* vg;
-
-  struct texture_context {
+  struct {
     ::GLuint program;
     ::GLuint a_position;
     ::GLuint a_tex_coord;
     ::GLuint s_texture;
     ::GLuint textures[num_buffers];
   } texture;
+
+  ::NVGcontext* vg;
 
   int video_fd;
   struct buffer_context {
@@ -368,7 +370,7 @@ static void redraw(void* data, ::wl_callback* callback, [[maybe_unused]] std::ui
   }
   ::nvgEndFrame(ctx->vg);
 
-  ::eglSwapBuffers(ctx->egl_display, ctx->egl_surface);
+  ::eglSwapBuffers(ctx->egl.display, ctx->egl.surface);
   ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
 
   if (::ioctl(ctx->video_fd, VIDIOC_QBUF, &buf) == -1) {
@@ -555,13 +557,13 @@ auto main() -> int {
   };
   // clang-format on
 
-  ctx.egl_display = ::eglGetDisplay(static_cast<::EGLNativeDisplayType>(ctx.display));
-  if (!ctx.egl_display) {
+  ctx.egl.display = ::eglGetDisplay(static_cast<::EGLNativeDisplayType>(ctx.display));
+  if (!ctx.egl.display) {
     std::cerr << "failed to create egl display" << std::endl;
     return -1;
   }
 
-  if (::eglInitialize(ctx.egl_display, nullptr, nullptr) != EGL_TRUE) {
+  if (::eglInitialize(ctx.egl.display, nullptr, nullptr) != EGL_TRUE) {
     std::cerr << "failed to initialize egl display" << std::endl;
     return -1;
   }
@@ -573,7 +575,7 @@ auto main() -> int {
 
   ::EGLConfig configs{};
   ::EGLint num_configs{};
-  ::eglChooseConfig(ctx.egl_display, config_attribs, &configs, 1, &num_configs);
+  ::eglChooseConfig(ctx.egl.display, config_attribs, &configs, 1, &num_configs);
   if (!num_configs) {
     return -1;
   }
@@ -584,15 +586,15 @@ auto main() -> int {
     return -1;
   }
 
-  ctx.egl_context = ::eglCreateContext(ctx.egl_display, configs, EGL_NO_CONTEXT, context_attribs);
+  ctx.egl.context = ::eglCreateContext(ctx.egl.display, configs, EGL_NO_CONTEXT, context_attribs);
 
-  ctx.egl_surface = ::eglCreateWindowSurface(
-      ctx.egl_display, configs, static_cast<::EGLNativeWindowType>(ctx.egl_window), nullptr);
-  if (ctx.egl_surface == EGL_NO_SURFACE) {
+  ctx.egl.surface = ::eglCreateWindowSurface(
+      ctx.egl.display, configs, static_cast<::EGLNativeWindowType>(ctx.egl_window), nullptr);
+  if (ctx.egl.surface == EGL_NO_SURFACE) {
     return -1;
   }
 
-  if (!::eglMakeCurrent(ctx.egl_display, ctx.egl_surface, ctx.egl_surface, ctx.egl_context)) {
+  if (!::eglMakeCurrent(ctx.egl.display, ctx.egl.surface, ctx.egl.surface, ctx.egl.context)) {
     return -1;
   }
 
@@ -636,7 +638,7 @@ auto main() -> int {
       };
       // clang-format on
 
-      ::EGLImageKHR image = ::eglCreateImageKHR(ctx.egl_display, EGL_NO_CONTEXT,
+      ::EGLImageKHR image = ::eglCreateImageKHR(ctx.egl.display, EGL_NO_CONTEXT,
                                                 EGL_LINUX_DMA_BUF_EXT, nullptr, attrs);
       if (image == EGL_NO_IMAGE_KHR) {
         std::cerr << "failed to create image" << std::endl;
