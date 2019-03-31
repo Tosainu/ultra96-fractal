@@ -2,8 +2,10 @@
 #include <array>
 #include <chrono>
 #include <cstdint>
+#include <cstring>
 #include <iomanip>
 #include <iostream>
+#include <optional>
 #include <string_view>
 #include <thread>
 #include <vector>
@@ -106,6 +108,8 @@ struct window_context {
     int fd;
   };
   std::array<buffer_context, num_buffers> video_buffers;
+  std::optional<std::uint32_t> processing_buffer_index;
+  std::optional<std::uint32_t> displaying_buffer_index;
 
   bool running;
   int epoll_fd;
@@ -280,22 +284,12 @@ static void redraw(void* data, ::wl_callback* callback, [[maybe_unused]] std::ui
   const auto width = ctx->width;
   const auto height = ctx->height;
 
-  ::v4l2_plane planes[VIDEO_MAX_PLANES];
-  ::v4l2_buffer buf{};
-  buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
-  buf.memory = V4L2_MEMORY_MMAP;
-  buf.length = VIDEO_MAX_PLANES;
-  buf.m.planes = planes;
-  if (::ioctl(ctx->video_fd, VIDIOC_DQBUF, &buf) == -1) {
-    perror_exit("VIDIOC_DQBUF");
-  }
-
   const auto t1 = std::chrono::steady_clock::now();
 
   ::glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   ::glClear(GL_COLOR_BUFFER_BIT);
 
-  {
+  if (ctx->displaying_buffer_index) {
     // clang-format off
     static constexpr GLfloat tex_pos[] = {
         -1.0f, 1.0f,  0.0f,
@@ -327,7 +321,7 @@ static void redraw(void* data, ::wl_callback* callback, [[maybe_unused]] std::ui
     ::glEnableVertexAttribArray(t.a_position);
     ::glEnableVertexAttribArray(t.a_tex_coord);
 
-    ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, t.textures[buf.index]);
+    ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, t.textures[ctx->displaying_buffer_index.value()]);
     ::glUniform1i(t.s_texture, 0);
     ::glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
 
@@ -369,10 +363,6 @@ static void redraw(void* data, ::wl_callback* callback, [[maybe_unused]] std::ui
   ::eglSwapBuffers(ctx->egl.display, ctx->egl.surface);
   ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
 
-  if (::ioctl(ctx->video_fd, VIDIOC_QBUF, &buf) == -1) {
-    perror_exit("VIDIOC_QBUF");
-  }
-
   const auto t2 = std::chrono::steady_clock::now();
   const auto t1t2 = (t2 - t1) / std::chrono::nanoseconds(1);
   std::cout << std::setw(12) << t1t2 << std::endl;
@@ -406,6 +396,56 @@ static void handle_display_events(window_context* ctx, std::uint32_t events) {
       return;
     }
   }
+}
+
+static void handle_v4l2_events(window_context* ctx, std::uint32_t events) {
+  if (events & EPOLLERR || events & EPOLLHUP) {
+    ctx->running = false;
+    return;
+  }
+
+  if (!(events & EPOLLIN)) {
+    return;
+  }
+
+  std::uint32_t new_index{};
+  {
+    ::v4l2_plane planes[VIDEO_MAX_PLANES];
+    ::v4l2_buffer buf{};
+    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+    buf.memory = V4L2_MEMORY_MMAP;
+    buf.length = VIDEO_MAX_PLANES;
+    buf.m.planes = planes;
+    if (::ioctl(ctx->video_fd, VIDIOC_DQBUF, &buf) == -1) {
+      std::cerr << "VIDIOC_DQBUF: " << std::strerror(errno) << std::endl;
+      ctx->running = false;
+      return;
+    }
+    new_index = buf.index;
+  }
+
+  if (ctx->displaying_buffer_index) {
+    ::v4l2_plane planes[VIDEO_MAX_PLANES];
+    ::v4l2_buffer buf{};
+    buf.index = ctx->displaying_buffer_index.value();
+    buf.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
+    buf.memory = V4L2_MEMORY_MMAP;
+    buf.length = VIDEO_MAX_PLANES;
+    buf.m.planes = planes;
+    if (::ioctl(ctx->video_fd, VIDIOC_QUERYBUF, &buf) == -1) {
+      std::cerr << "VIDIOC_QUERYBUF: " << std::strerror(errno) << std::endl;
+      ctx->running = false;
+      return;
+    }
+    if (::ioctl(ctx->video_fd, VIDIOC_QBUF, &buf) == -1) {
+      std::cerr << "VIDIOC_QBUF: " << std::strerror(errno) << std::endl;
+      ctx->running = false;
+      return;
+    }
+  }
+
+  ctx->displaying_buffer_index = ctx->processing_buffer_index;
+  ctx->processing_buffer_index = new_index;
 }
 
 auto main() -> int {
@@ -671,6 +711,13 @@ auto main() -> int {
     ep.events = EPOLLIN | EPOLLERR | EPOLLHUP;
     ep.data.ptr = reinterpret_cast<void*>(handle_display_events);
     ::epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.display_fd, &ep);
+  }
+
+  {
+    ::epoll_event ep{};
+    ep.events = EPOLLIN | EPOLLERR | EPOLLHUP;
+    ep.data.ptr = reinterpret_cast<void*>(handle_v4l2_events);
+    ::epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.video_fd, &ep);
   }
 
   int fractal_reg_fd = ::open("/dev/mem", O_RDWR | O_SYNC);
