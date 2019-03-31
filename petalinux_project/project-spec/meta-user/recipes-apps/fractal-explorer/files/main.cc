@@ -4,20 +4,19 @@
 #include <cstdint>
 #include <iomanip>
 #include <iostream>
-#include <memory>
 #include <string_view>
 #include <thread>
 #include <vector>
 
 #include <wayland-client.h>
-#include <wayland-server.h>
-#include <wayland-client-protocol.h>
 #include <wayland-egl.h>
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
+
+#include <libdrm/drm_fourcc.h>
 
 #define NANOVG_GLES2_IMPLEMENTATION
 #include <nanovg.h>
@@ -30,8 +29,6 @@ extern "C" {
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <unistd.h>
-
-#include <libdrm/drm_fourcc.h>
 
 #include <linux/videodev2.h>
 }
@@ -226,7 +223,7 @@ std::uint32_t double_to_fix32_4(double v) {
 
 void shell_surface_handle_ping([[maybe_unused]] void* data, ::wl_shell_surface* shell_surface,
                                std::uint32_t serial) {
-  wl_shell_surface_pong(shell_surface, serial);
+  ::wl_shell_surface_pong(shell_surface, serial);
 }
 
 void shell_surface_handle_configure([[maybe_unused]] void* data,
@@ -246,15 +243,15 @@ const struct wl_shell_surface_listener shell_surface_listener = {
 
 static void registry_handle_global(void* data, ::wl_registry* registry, std::uint32_t name,
                                    const char* interface, [[maybe_unused]] std::uint32_t version) {
-  const auto ifname = std::string_view{interface};
   auto ctx = static_cast<::window_context*>(data);
 
+  const auto ifname = std::string_view{interface};
   if (ifname == "wl_compositor"sv) {
-    ctx->compositor = static_cast<::wl_compositor*>(
-        ::wl_registry_bind(registry, name, &wl_compositor_interface, 1));
+    auto compositor = ::wl_registry_bind(registry, name, &wl_compositor_interface, 1);
+    ctx->compositor = static_cast<::wl_compositor*>(compositor);
   } else if (ifname == "wl_shell"sv) {
-    ctx->shell =
-        static_cast<::wl_shell*>(::wl_registry_bind(registry, name, &wl_shell_interface, 1));
+    auto shell = ::wl_registry_bind(registry, name, &wl_shell_interface, 1);
+    ctx->shell = static_cast<::wl_shell*>(shell);
   }
 }
 
@@ -269,12 +266,12 @@ static const ::wl_registry_listener registry_listener = {
 
 static void redraw(void* data, ::wl_callback* callback, std::uint32_t time);
 
-static const ::wl_callback_listener listener = {
+static const ::wl_callback_listener redraw_listener = {
     redraw,
 };
 
 static void redraw(void* data, ::wl_callback* callback, [[maybe_unused]] std::uint32_t time) {
-  ::window_context* ctx = reinterpret_cast<::window_context*>(data);
+  auto ctx = static_cast<::window_context*>(data);
 
   if (callback) {
     ::wl_callback_destroy(callback);
@@ -381,7 +378,7 @@ static void redraw(void* data, ::wl_callback* callback, [[maybe_unused]] std::ui
   std::cout << std::setw(12) << t1t2 << std::endl;
 
   ctx->redraw_cb = ::wl_surface_frame(ctx->surface);
-  ::wl_callback_add_listener(ctx->redraw_cb, &listener, ctx);
+  ::wl_callback_add_listener(ctx->redraw_cb, &redraw_listener, ctx);
 }
 
 static void handle_display_events(window_context* ctx, std::uint32_t events) {
@@ -681,7 +678,7 @@ auto main() -> int {
     perror_exit("open");
   }
 
-  auto fractal_reg = reinterpret_cast<std::uint64_t*>(::mmap(
+  auto fractal_reg = static_cast<std::uint64_t*>(::mmap(
       nullptr, ::getpagesize(), PROT_READ | PROT_WRITE, MAP_SHARED, fractal_reg_fd, 0xa0000000));
   if (fractal_reg == MAP_FAILED) {
     perror_exit("mmap");
