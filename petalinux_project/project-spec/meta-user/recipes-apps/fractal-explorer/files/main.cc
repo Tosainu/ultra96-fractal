@@ -49,7 +49,7 @@ void main()
    gl_Position = a_position;
    v_texCoord = a_texCoord;
 }
-)"sv;
+)";
 
 static constexpr auto fragment_shader_src = R"(
 #extension GL_OES_EGL_image_external: require
@@ -60,15 +60,15 @@ void main()
 {
   gl_FragColor = texture2D(s_texture, v_texCoord);
 }
-)"sv;
+)";
 
 static ::PFNEGLCREATEIMAGEKHRPROC eglCreateImageKHR;
 static ::PFNEGLDESTROYIMAGEKHRPROC eglDestroyImageKHR;
 static ::PFNGLEGLIMAGETARGETTEXTURE2DOESPROC glEGLImageTargetTexture2DOES;
 
 template <class T>
-static inline T get_egl_proc(const std::string_view proc) {
-  return reinterpret_cast<T>(::eglGetProcAddress(proc.data()));
+static inline T get_egl_proc(const char* proc_name) {
+  return reinterpret_cast<T>(::eglGetProcAddress(proc_name));
 }
 
 struct window_context {
@@ -115,18 +115,18 @@ struct window_context {
   int display_fd;
 };
 
-static inline void perror_exit(std::string_view s) {
-  std::perror(s.data());
+static inline void perror_exit(const char* str) {
+  std::perror(str);
   std::exit(EXIT_FAILURE);
 }
 
-static ::GLuint load_shader(::GLenum type, const char* str) {
+static ::GLuint load_shader(::GLenum type, const char* shader_src) {
   ::GLuint shader = ::glCreateShader(type);
   if (!shader) {
     return 0;
   }
 
-  ::glShaderSource(shader, 1, &str, nullptr);
+  ::glShaderSource(shader, 1, &shader_src, nullptr);
   ::glCompileShader(shader);
 
   ::GLint compiled;
@@ -139,15 +139,14 @@ static ::GLuint load_shader(::GLenum type, const char* str) {
   return shader;
 }
 
-static ::GLuint create_gl_program(const std::string_view vshader_src,
-                                  const std::string_view fshader_src) {
-  ::GLuint vshader = load_shader(GL_VERTEX_SHADER, vshader_src.data());
+static ::GLuint create_gl_program(const char* vshader_src, const char* fshader_src) {
+  ::GLuint vshader = load_shader(GL_VERTEX_SHADER, vshader_src);
   if (!vshader) {
     std::cerr << "create_gl_program: failed to load vertex shader" << std::endl;
     return 0;
   }
 
-  ::GLuint fshader = load_shader(GL_FRAGMENT_SHADER, fshader_src.data());
+  ::GLuint fshader = load_shader(GL_FRAGMENT_SHADER, fshader_src);
   if (!fshader) {
     std::cerr << "create_gl_program: failed to load fragment shader" << std::endl;
     ::glDeleteShader(vshader);
@@ -598,18 +597,18 @@ auto main() -> int {
     return -1;
   }
 
-  if (!(::eglCreateImageKHR = get_egl_proc<::PFNEGLCREATEIMAGEKHRPROC>("eglCreateImageKHR"sv))) {
+  if (!(::eglCreateImageKHR = get_egl_proc<::PFNEGLCREATEIMAGEKHRPROC>("eglCreateImageKHR"))) {
     std::cerr << "eglCreateImageKHR" << std::endl;
     return -1;
   }
 
-  if (!(::eglDestroyImageKHR = get_egl_proc<::PFNEGLDESTROYIMAGEKHRPROC>("eglDestroyImageKHR"sv))) {
+  if (!(::eglDestroyImageKHR = get_egl_proc<::PFNEGLDESTROYIMAGEKHRPROC>("eglDestroyImageKHR"))) {
     std::cerr << "eglDestroyImageKHR" << std::endl;
     return -1;
   }
 
-  if (!(::glEGLImageTargetTexture2DOES = get_egl_proc<::PFNGLEGLIMAGETARGETTEXTURE2DOESPROC>(
-            "glEGLImageTargetTexture2DOES"sv))) {
+  if (!(::glEGLImageTargetTexture2DOES =
+            get_egl_proc<::PFNGLEGLIMAGETARGETTEXTURE2DOESPROC>("glEGLImageTargetTexture2DOES"))) {
     std::cerr << "glEGLImageTargetTexture2DOES" << std::endl;
     return -1;
   }
