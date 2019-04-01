@@ -126,6 +126,7 @@ struct window_context {
 
   struct app_state {
     std::uint64_t animation_frame;
+    double cr, ci, scale, offset_x, offset_y;
   } app;
 
   struct {
@@ -545,6 +546,43 @@ static void handle_timer_events(window_context* ctx, std::uint32_t events) {
       return;
     }
 
+    if (ctx->joystick_fd >= 0) {
+      const auto& j = ctx->joystick;
+      auto& s = ctx->app;
+
+      if (j.buttons[1] && s.scale <= 100) s.scale += 0.001;
+      if (j.buttons[2] && s.scale >= 0.0) s.scale -= 0.001;
+
+      if (j.axes[4] > 0) s.offset_x += 0.001;
+      if (j.axes[4] < 0) s.offset_x -= 0.001;
+
+      if (j.axes[5] < 0) s.offset_y += 0.001;
+      if (j.axes[5] > 0) s.offset_y -= 0.001;
+    }
+
+    {
+      constexpr auto ratio = 1080.0 / 1920.0;
+      const auto cr = ctx->app.cr;
+      const auto ci = ctx->app.ci;
+      const auto scale = ctx->app.scale;
+      const auto x1 = 1.0 * scale;
+      const auto y1 = ratio * scale;
+      const auto dx = 2.0 * x1 / 1920.0;
+      const auto dy = 2.0 * y1 / 1080.0;
+      const auto offset_x = ctx->app.offset_x;
+      const auto offset_y = ctx->app.offset_y;
+      const auto x0 = x1 - offset_x;
+      const auto y0 = y1 + offset_y;
+
+      ctx->fractal_ctl->set_cr(cr);
+      ctx->fractal_ctl->set_ci(ci);
+      ctx->fractal_ctl->set_x0(x0);
+      ctx->fractal_ctl->set_y0(y0);
+      ctx->fractal_ctl->set_dx(dx);
+      ctx->fractal_ctl->set_dy(dy);
+    }
+
+    /*
     auto i = ctx->app.animation_frame + exp;
     if (i >= 9000) i = 1000;
 
@@ -553,6 +591,7 @@ static void handle_timer_events(window_context* ctx, std::uint32_t events) {
     ctx->fractal_ctl->set_ci(0.7885 * std::sin(t));
 
     ctx->app.animation_frame = i;
+    */
 
     return;
   }
@@ -910,6 +949,12 @@ auto main() -> int {
     ep.data.ptr = reinterpret_cast<void*>(handle_joystick_events);
     ::epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.joystick_fd, &ep);
   }
+
+  ctx.app.cr = -0.4;
+  ctx.app.ci = 0.6;
+  ctx.app.scale = 1.0;
+  ctx.app.offset_x = 0.0;
+  ctx.app.offset_y = 0.0;
 
   ctx.fractal_ctl = std::make_unique<fractal_controller>(0xa0000000);
 
