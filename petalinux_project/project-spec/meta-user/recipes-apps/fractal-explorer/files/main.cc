@@ -5,6 +5,7 @@
 #include <cstring>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string_view>
@@ -30,6 +31,7 @@ extern "C" {
 #include <sys/epoll.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
+#include <sys/timerfd.h>
 #include <sys/types.h>
 #include <unistd.h>
 
@@ -71,6 +73,8 @@ template <class T>
 static inline T get_egl_proc(const char* proc_name) {
   return reinterpret_cast<T>(::eglGetProcAddress(proc_name));
 }
+
+class fractal_controller;
 
 struct window_context {
   int width;
@@ -116,6 +120,13 @@ struct window_context {
   bool running;
   int epoll_fd;
   int display_fd;
+  int timer_fd;
+
+  struct app_state {
+    std::uint64_t animation_frame;
+  } app;
+
+  std::unique_ptr<fractal_controller> fractal_ctl;
 };
 
 static inline void perror_exit(const char* str) {
@@ -511,6 +522,33 @@ static void handle_v4l2_events(window_context* ctx, std::uint32_t events) {
   ctx->processing_buffer_index = new_index;
 }
 
+static void handle_timer_events(window_context* ctx, std::uint32_t events) {
+  if (events & EPOLLERR || events & EPOLLHUP) {
+    ctx->running = false;
+    return;
+  }
+
+  if (events & EPOLLIN) {
+    std::uint64_t exp{};
+    if (::read(ctx->timer_fd, &exp, sizeof exp) != sizeof exp) {
+      std::cerr << "timer_fd read: " << std::strerror(errno) << std::endl;
+      ctx->running = false;
+      return;
+    }
+
+    auto i = ctx->app.animation_frame + exp;
+    if (i >= 9000) i = 1000;
+
+    const auto t = (static_cast<double>(i) / 10000) * 6.28;
+    ctx->fractal_ctl->set_cr(0.7885 * std::cos(t));
+    ctx->fractal_ctl->set_ci(0.7885 * std::sin(t));
+
+    ctx->app.animation_frame = i;
+
+    return;
+  }
+}
+
 auto main() -> int {
   window_context ctx{};
   ctx.width = 1920;
@@ -784,19 +822,36 @@ auto main() -> int {
     ::epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.video_fd, &ep);
   }
 
-  auto fractal_ctl = fractal_controller{0xa0000000};
+  ctx.timer_fd = ::timerfd_create(CLOCK_REALTIME, 0);
+  if (ctx.timer_fd < 0) {
+    perror_exit("timerfd_create");
+  }
 
-  std::thread th([&fractal_ctl] {
-    for (;;) {
-      for (int i = 1000; i < 9000; ++i) {
-        const auto t = (static_cast<double>(i) / 10000) * 6.28;
-        fractal_ctl.set_cr(0.7885 * std::cos(t));
-        fractal_ctl.set_ci(0.7885 * std::sin(t));
-
-        ::usleep(10000);
-      }
+  {
+    ::timespec now{};
+    if (clock_gettime(CLOCK_REALTIME, &now) != 0) {
+      perror_exit("clock_gettime");
     }
-  });
+
+    ::itimerspec nexttime{};
+    nexttime.it_interval.tv_sec = 0;
+    nexttime.it_interval.tv_nsec = 10'000'000; // 10 [ms]
+    nexttime.it_value.tv_sec = nexttime.it_interval.tv_sec + now.tv_sec;
+    nexttime.it_value.tv_nsec = nexttime.it_interval.tv_nsec + now.tv_nsec;
+
+    if (::timerfd_settime(ctx.timer_fd, TFD_TIMER_ABSTIME, &nexttime, NULL) != 0) {
+      perror_exit("timerfd_settime");
+    }
+  }
+
+  {
+    ::epoll_event ep{};
+    ep.events = EPOLLIN | EPOLLERR | EPOLLHUP;
+    ep.data.ptr = reinterpret_cast<void*>(handle_timer_events);
+    ::epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.timer_fd, &ep);
+  }
+
+  ctx.fractal_ctl = std::make_unique<fractal_controller>(0xa0000000);
 
   redraw(&ctx, nullptr, 0);
 
