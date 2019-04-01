@@ -225,6 +225,13 @@ std::uint32_t double_to_fix32_4(double v) {
   }
 }
 
+static inline double fix32_4_to_double(std::uint32_t v) {
+  if (!v) {
+    return 0.0;
+  }
+  return static_cast<double>(static_cast<int32_t>(v)) / (1ul << (32 - 4));
+}
+
 void shell_surface_handle_ping([[maybe_unused]] void* data, ::wl_shell_surface* shell_surface,
                                std::uint32_t serial) {
   ::wl_shell_surface_pong(shell_surface, serial);
