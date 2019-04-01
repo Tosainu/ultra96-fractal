@@ -6,6 +6,7 @@
 #include <iomanip>
 #include <iostream>
 #include <optional>
+#include <stdexcept>
 #include <string_view>
 #include <thread>
 #include <vector>
@@ -35,6 +36,7 @@ extern "C" {
 #include <linux/videodev2.h>
 }
 
+using namespace std::string_literals;
 using namespace std::string_view_literals;
 
 static constexpr std::uint32_t num_buffers = 8;
@@ -181,7 +183,7 @@ static ::GLuint create_gl_program(const char* vshader_src, const char* fshader_s
   return program;
 }
 
-std::uint32_t double_to_fix32_4(double v) {
+static std::uint32_t double_to_fix32_4(double v) {
   union {
     double d;
     std::uint64_t u;
@@ -231,6 +233,60 @@ static inline double fix32_4_to_double(std::uint32_t v) {
   }
   return static_cast<double>(static_cast<int32_t>(v)) / (1ul << (32 - 4));
 }
+
+class fractal_controller {
+  int fd_;
+  std::size_t size_;
+  std::uint64_t* reg_;
+
+public:
+  fractal_controller(std::uintptr_t base_addr)
+      : fd_{-1}, reg_{static_cast<std::uint64_t*>(MAP_FAILED)} {
+    fd_ = ::open("/dev/mem", O_RDWR | O_SYNC);
+    if (fd_ < 0) {
+      throw std::runtime_error{"failed to open /dev/mem: "s + std::strerror(errno)};
+    }
+
+    const auto s = ::sysconf(_SC_PAGESIZE);
+    if (s < 0) {
+      throw std::runtime_error{"failed to get page size: "s + std::strerror(errno)};
+    }
+    size_ = static_cast<std::size_t>(s);
+
+    reg_ = static_cast<std::uint64_t*>(
+        ::mmap(nullptr, size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, base_addr));
+    if (reg_ == MAP_FAILED) {
+      throw std::runtime_error{"mmap: "s + std::strerror(errno)};
+    }
+  }
+
+  ~fractal_controller() {
+    if (fd_ > 0) {
+      ::close(fd_);
+    }
+
+    if (reg_ != MAP_FAILED) {
+      ::munmap(reg_, size_);
+    }
+  }
+
+#define FRACTAL_CONTROLLER_GETTER_SETTER(name, index) \
+  double name() const {                               \
+    return fix32_4_to_double(reg_[index]);            \
+  }                                                   \
+  void set_##name(double name) {                      \
+    reg_[index] = double_to_fix32_4(name);            \
+  }
+
+  FRACTAL_CONTROLLER_GETTER_SETTER(x0, 2u)
+  FRACTAL_CONTROLLER_GETTER_SETTER(y0, 3u)
+  FRACTAL_CONTROLLER_GETTER_SETTER(dx, 4u)
+  FRACTAL_CONTROLLER_GETTER_SETTER(dy, 5u)
+  FRACTAL_CONTROLLER_GETTER_SETTER(cr, 6u)
+  FRACTAL_CONTROLLER_GETTER_SETTER(ci, 7u)
+
+#undef FRACTAL_CONTROLLER_GETTER_SETTER
+};
 
 void shell_surface_handle_ping([[maybe_unused]] void* data, ::wl_shell_surface* shell_surface,
                                std::uint32_t serial) {
@@ -728,25 +784,14 @@ auto main() -> int {
     ::epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.video_fd, &ep);
   }
 
-  int fractal_reg_fd = ::open("/dev/mem", O_RDWR | O_SYNC);
-  if (fractal_reg_fd < 0) {
-    perror_exit("open");
-  }
+  auto fractal_ctl = fractal_controller{0xa0000000};
 
-  auto fractal_reg = static_cast<std::uint64_t*>(::mmap(
-      nullptr, ::getpagesize(), PROT_READ | PROT_WRITE, MAP_SHARED, fractal_reg_fd, 0xa0000000));
-  if (fractal_reg == MAP_FAILED) {
-    perror_exit("mmap");
-  }
-
-  std::thread th([fractal_reg] {
+  std::thread th([&fractal_ctl] {
     for (;;) {
       for (int i = 1000; i < 9000; ++i) {
         const auto t = (static_cast<double>(i) / 10000) * 6.28;
-        // cr
-        fractal_reg[6] = double_to_fix32_4(0.7885 * std::cos(t));
-        // ci
-        fractal_reg[7] = double_to_fix32_4(0.7885 * std::sin(t));
+        fractal_ctl.set_cr(0.7885 * std::cos(t));
+        fractal_ctl.set_ci(0.7885 * std::sin(t));
 
         ::usleep(10000);
       }
