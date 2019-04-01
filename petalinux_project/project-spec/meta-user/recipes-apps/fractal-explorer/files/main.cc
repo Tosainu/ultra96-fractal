@@ -35,6 +35,7 @@ extern "C" {
 #include <sys/types.h>
 #include <unistd.h>
 
+#include <linux/joystick.h>
 #include <linux/videodev2.h>
 }
 
@@ -121,10 +122,18 @@ struct window_context {
   int epoll_fd;
   int display_fd;
   int timer_fd;
+  int joystick_fd;
 
   struct app_state {
     std::uint64_t animation_frame;
   } app;
+
+  struct {
+    std::uint8_t num_axes;
+    std::uint8_t num_buttons;
+    std::unique_ptr<std::int16_t[]> axes;
+    std::unique_ptr<std::int16_t[]> buttons;
+  } joystick;
 
   std::unique_ptr<fractal_controller> fractal_ctl;
 };
@@ -549,6 +558,37 @@ static void handle_timer_events(window_context* ctx, std::uint32_t events) {
   }
 }
 
+static void handle_joystick_events(window_context* ctx, std::uint32_t events) {
+  if (events & EPOLLERR || events & EPOLLHUP) {
+    ctx->running = false;
+    return;
+  }
+
+  if (events & EPOLLIN) {
+    ::js_event jse{};
+    if (::read(ctx->joystick_fd, &jse, sizeof jse) != sizeof jse) {
+      std::cerr << "joystick_fd read: " << std::strerror(errno) << std::endl;
+      ctx->running = false;
+      return;
+    }
+
+    switch (jse.type & ~JS_EVENT_INIT) {
+      case JS_EVENT_AXIS:
+        if (jse.number < ctx->joystick.num_axes) {
+          ctx->joystick.axes[jse.number] = jse.value;
+        }
+        break;
+      case JS_EVENT_BUTTON:
+        if (jse.number < ctx->joystick.num_buttons) {
+          ctx->joystick.buttons[jse.number] = jse.value;
+        }
+        break;
+    }
+
+    return;
+  }
+}
+
 auto main() -> int {
   window_context ctx{};
   ctx.width = 1920;
@@ -849,6 +889,26 @@ auto main() -> int {
     ep.events = EPOLLIN | EPOLLERR | EPOLLHUP;
     ep.data.ptr = reinterpret_cast<void*>(handle_timer_events);
     ::epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.timer_fd, &ep);
+  }
+
+  ctx.joystick_fd = ::open("/dev/input/js0", O_RDONLY);
+  if (ctx.joystick_fd < 0) {
+    std::cerr << "failed to open /dev/input/js0: " << std::strerror(errno) << std::endl;
+  } else {
+    if (::ioctl(ctx.joystick_fd, JSIOCGAXES, &ctx.joystick.num_axes) < 0) {
+      perror_exit("JSIOCGAXES");
+    }
+    if (::ioctl(ctx.joystick_fd, JSIOCGBUTTONS, &ctx.joystick.num_buttons) < 0) {
+      perror_exit("JSIOCGBUTTONS");
+    }
+
+    ctx.joystick.axes = std::make_unique<std::int16_t[]>(ctx.joystick.num_axes);
+    ctx.joystick.buttons = std::make_unique<std::int16_t[]>(ctx.joystick.num_buttons);
+
+    ::epoll_event ep{};
+    ep.events = EPOLLIN | EPOLLERR | EPOLLHUP;
+    ep.data.ptr = reinterpret_cast<void*>(handle_joystick_events);
+    ::epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.joystick_fd, &ep);
   }
 
   ctx.fractal_ctl = std::make_unique<fractal_controller>(0xa0000000);
