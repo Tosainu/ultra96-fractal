@@ -207,6 +207,10 @@ proc create_hier_cell_to_live_video { parentCell nameHier } {
    CONFIG.M_TDATA_NUM_BYTES {16} \
    CONFIG.S_TDATA_NUM_BYTES {12} \
    CONFIG.TDATA_REMAP {8'b00000000,tdata[87:80],tdata[79:72],tdata[95:88],8'b00000000,tdata[63:56],tdata[55:48],tdata[71:64],8'b00000000,tdata[39:32],tdata[31:24],tdata[47:40],8'b00000000,tdata[15:8],tdata[7:0],tdata[23:16]} \
+   CONFIG.S_HAS_TKEEP {1} \
+   CONFIG.S_HAS_TSTRB {1} \
+   CONFIG.M_HAS_TKEEP {1} \
+   CONFIG.M_HAS_TSTRB {1} \
    CONFIG.TKEEP_REMAP {4'b1111,tkeep[11:0]} \
    CONFIG.TSTRB_REMAP {4'b1111,tstrb[11:0]} \
  ] $axis_subset_converter_0
