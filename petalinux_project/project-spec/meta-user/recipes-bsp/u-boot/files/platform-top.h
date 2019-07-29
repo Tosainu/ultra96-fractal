@@ -22,12 +22,3 @@
 #undef CONFIG_DEBUG_UART
 #endif
 #endif
-
-/*Define CONFIG_ZYNQMP_EEPROM here and its necessaries in u-boot menuconfig if you had EEPROM memory. */
-#ifdef CONFIG_ZYNQMP_EEPROM
-#define CONFIG_SYS_I2C_EEPROM_ADDR_LEN  1
-#define CONFIG_CMD_EEPROM
-#define CONFIG_ZYNQ_EEPROM_BUS          5
-#define CONFIG_ZYNQ_GEM_EEPROM_ADDR     0x54
-#define CONFIG_ZYNQ_GEM_I2C_MAC_OFFSET  0x20
-#endif
