@@ -91,6 +91,7 @@ struct window_context {
 
   struct {
     ::EGLDisplay display;
+    ::EGLConfig config;
     ::EGLContext context;
   } egl;
 
@@ -312,6 +313,50 @@ public:
 
 #undef FRACTAL_CONTROLLER_GETTER_SETTER
 };
+
+std::tuple<::EGLDisplay, ::EGLConfig, ::EGLContext> init_egl(::wl_display* native_display) {
+  // clang-format off
+  static const ::EGLint config_attribs[] = {
+    EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
+    EGL_RED_SIZE,        1,
+    EGL_GREEN_SIZE,      1,
+    EGL_BLUE_SIZE,       1,
+    EGL_ALPHA_SIZE,      1,
+    EGL_DEPTH_SIZE,      1,
+    EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
+    EGL_NONE,
+  };
+
+  static const ::EGLint context_attribs[] = {
+    EGL_CONTEXT_CLIENT_VERSION, 2,
+    EGL_NONE,
+  };
+  // clang-format on
+
+  ::EGLDisplay display = ::eglGetDisplay(static_cast<::EGLNativeDisplayType>(native_display));
+  if (!display) {
+    throw std::runtime_error{"failed to create egl display"};
+  }
+
+  if (::eglInitialize(display, nullptr, nullptr) != EGL_TRUE) {
+    throw std::runtime_error{"failed to initialize egl display"};
+  }
+
+  if (!::eglBindAPI(EGL_OPENGL_ES_API)) {
+    throw std::runtime_error{"failed to bind EGL client API"};
+  }
+
+  ::EGLConfig config{};
+  ::EGLint num_configs{};
+  ::eglChooseConfig(display, config_attribs, &config, 1, &num_configs);
+  if (!num_configs) {
+    throw std::runtime_error{"failed to get EGL config"};
+  }
+
+  ::EGLContext context = ::eglCreateContext(display, config, EGL_NO_CONTEXT, context_attribs);
+
+  return std::make_tuple(display, config, context);
+}
 
 void shell_surface_handle_ping([[maybe_unused]] void* data, ::wl_shell_surface* shell_surface,
                                std::uint32_t serial) {
@@ -759,46 +804,7 @@ auto main() -> int {
   ::wl_shell_surface_set_toplevel(ctx.shell_surface);
   ::wl_shell_surface_add_listener(ctx.shell_surface, &shell_surface_listener, &ctx);
 
-  // clang-format off
-  static const ::EGLint config_attribs[] = {
-    EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
-    EGL_RED_SIZE,        1,
-    EGL_GREEN_SIZE,      1,
-    EGL_BLUE_SIZE,       1,
-    EGL_ALPHA_SIZE,      1,
-    EGL_DEPTH_SIZE,      1,
-    EGL_RENDERABLE_TYPE, EGL_OPENGL_ES2_BIT,
-    EGL_NONE,
-  };
-
-  static const ::EGLint context_attribs[] = {
-    EGL_CONTEXT_CLIENT_VERSION, 2,
-    EGL_NONE,
-  };
-  // clang-format on
-
-  ctx.egl.display = ::eglGetDisplay(static_cast<::EGLNativeDisplayType>(ctx.display));
-  if (!ctx.egl.display) {
-    std::cerr << "failed to create egl display" << std::endl;
-    return -1;
-  }
-
-  if (::eglInitialize(ctx.egl.display, nullptr, nullptr) != EGL_TRUE) {
-    std::cerr << "failed to initialize egl display" << std::endl;
-    return -1;
-  }
-
-  if (!::eglBindAPI(EGL_OPENGL_ES_API)) {
-    std::cerr << "failed to bind EGL client API" << std::endl;
-    return -1;
-  }
-
-  ::EGLConfig configs{};
-  ::EGLint num_configs{};
-  ::eglChooseConfig(ctx.egl.display, config_attribs, &configs, 1, &num_configs);
-  if (!num_configs) {
-    return -1;
-  }
+  std::tie(ctx.egl.display, ctx.egl.config, ctx.egl.context) = init_egl(ctx.display);
 
   ctx.main_surface.egl_window =
       wl_egl_window_create(ctx.main_surface.surface, ctx.width, ctx.height);
@@ -807,11 +813,9 @@ auto main() -> int {
     return -1;
   }
 
-  ctx.egl.context = ::eglCreateContext(ctx.egl.display, configs, EGL_NO_CONTEXT, context_attribs);
-
   ctx.main_surface.egl_surface = ::eglCreateWindowSurface(
-      ctx.egl.display, configs, static_cast<::EGLNativeWindowType>(ctx.main_surface.egl_window),
-      nullptr);
+      ctx.egl.display, ctx.egl.config,
+      static_cast<::EGLNativeWindowType>(ctx.main_surface.egl_window), nullptr);
   if (ctx.main_surface.egl_surface == EGL_NO_SURFACE) {
     return -1;
   }
