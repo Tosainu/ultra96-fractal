@@ -22,9 +22,8 @@
 
 #include <libdrm/drm_fourcc.h>
 
-#define NANOVG_GLES2_IMPLEMENTATION
-#include <nanovg.h>
-#include <nanovg_gl.h>
+#include <cairo.h>
+#include <cairo-gl.h>
 
 extern "C" {
 #include <fcntl.h>
@@ -101,6 +100,8 @@ struct window_context {
     ::wl_subsurface* subsurface;
     ::wl_egl_window* egl_window;
     ::EGLSurface egl_surface;
+
+    ::cairo_surface_t* cairo_surface;
   };
   surface main_surface;
   surface overlay_surface;
@@ -113,7 +114,7 @@ struct window_context {
     ::GLuint textures[num_buffers];
   } texture;
 
-  ::NVGcontext* vg;
+  ::cairo_device_t* cairo_device;
 
   int video_fd;
   struct buffer_context {
@@ -367,6 +368,7 @@ window_context::surface make_surface(
     int height) {
   window_context::surface surface;
   surface.subsurface = nullptr;
+  surface.cairo_surface = nullptr;
 
   surface.surface = ::wl_compositor_create_surface(compositor);
   if (!surface.surface) {
@@ -490,13 +492,15 @@ static void redraw_main_surface(::window_context* ctx, [[maybe_unused]] std::uin
 
     ::glUseProgram(t.program);
 
+    ::glActiveTexture(GL_TEXTURE0);
+    ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, t.textures[ctx->displaying_buffer_index.value()]);
+
     ::glVertexAttribPointer(t.a_position, 3, GL_FLOAT, GL_FALSE, 0, tex_pos);
     ::glVertexAttribPointer(t.a_tex_coord, 2, GL_FLOAT, GL_FALSE, 0, tex_coord);
 
     ::glEnableVertexAttribArray(t.a_position);
     ::glEnableVertexAttribArray(t.a_tex_coord);
 
-    ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, t.textures[ctx->displaying_buffer_index.value()]);
     ::glUniform1i(t.s_texture, 0);
     ::glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, indices);
 
@@ -531,38 +535,44 @@ static void redraw_overlay_surface(::window_context* ctx, [[maybe_unused]] std::
   const auto width = ctx->width;
   const auto height = ctx->height;
 
-  ::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-  ::glClear(GL_COLOR_BUFFER_BIT);
-
-  ::nvgBeginFrame(ctx->vg, width, height, 1.0f);
-  {
-    ::nvgBeginPath(ctx->vg);
-    ::nvgRect(ctx->vg, 32, 64, 436, 152);
-    ::nvgFillColor(ctx->vg, nvgRGBA(32, 32, 32, 192));
-    ::nvgFill(ctx->vg);
-
-    ::nvgBeginPath(ctx->vg);
-    ::nvgRect(ctx->vg, 31.5f, 63.5f, 437, 153);
-    ::nvgStrokeWidth(ctx->vg, 1.0f);
-    ::nvgStrokeColor(ctx->vg, nvgRGBA(0, 0, 0, 255));
-    ::nvgStroke(ctx->vg);
-
-    nvgFontFace(ctx->vg, "mono");
-    nvgFillColor(ctx->vg, nvgRGBA(255, 255, 255, 255));
-
-    nvgFontSize(ctx->vg, 32);
-    nvgText(ctx->vg, 48, 104, "Julia Set Explorer", nullptr);
-
-    nvgFontSize(ctx->vg, 16);
-    nvgText(ctx->vg, 364, 104, "by @myon___", nullptr);
-
-    nvgFontSize(ctx->vg, 14);
-    nvgText(ctx->vg, 48, 134, "cr: +00.000000000000    ci: +00.000000000000", nullptr);
-    nvgText(ctx->vg, 48, 154, "x0: +00.000000000000    dx: +00.000000000000", nullptr);
-    nvgText(ctx->vg, 48, 174, "y0: +00.000000000000    dy: +00.000000000000", nullptr);
-    nvgText(ctx->vg, 48, 194, "fps: 000.000, 000.000", nullptr);
+  if (!ctx->overlay_surface.cairo_surface) {
+    ctx->overlay_surface.cairo_surface = ::cairo_gl_surface_create_for_egl(
+        ctx->cairo_device, ctx->overlay_surface.egl_surface, width, height);
   }
-  ::nvgEndFrame(ctx->vg);
+  auto cr = ::cairo_create(ctx->overlay_surface.cairo_surface);
+
+  ::cairo_set_source_rgba(cr, 0.125, 0.125, 0.125, 0.75);
+  ::cairo_rectangle(cr, 31.5f, 63.5f, 437, 153);
+  ::cairo_fill_preserve(cr);
+
+  ::cairo_set_line_width(cr, 1.0);
+  ::cairo_set_source_rgba(cr, 0, 0, 0, 1.0);
+  ::cairo_stroke(cr);
+
+  ::cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 1.0);
+  ::cairo_select_font_face(cr, "monospace", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+
+  ::cairo_set_font_size(cr, 28);
+  ::cairo_move_to(cr, 48.0, 104.0);
+  ::cairo_show_text(cr, "Julia Set Explorer");
+
+  ::cairo_select_font_face(cr, "monospace", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+
+  ::cairo_set_font_size(cr, 14);
+  ::cairo_move_to(cr, 364.0, 104.0);
+  ::cairo_show_text(cr, "by @myon___");
+
+  ::cairo_set_font_size(cr, 12);
+  ::cairo_move_to(cr, 48.0, 134.0);
+  ::cairo_show_text(cr, "cr: +00.000000000000    ci: +00.000000000000");
+  ::cairo_move_to(cr, 48.0, 154.0);
+  ::cairo_show_text(cr, "x0: +00.000000000000    dx: +00.000000000000");
+  ::cairo_move_to(cr, 48.0, 174.0);
+  ::cairo_show_text(cr, "y0: +00.000000000000    dy: +00.000000000000");
+  ::cairo_move_to(cr, 48.0, 194.0);
+  ::cairo_show_text(cr, "fps: 000.000, 000.000");
+
+  ::cairo_destroy(cr);
 }
 
 static void flush_overlay_surface(::window_context* ctx, [[maybe_unused]] std::uint32_t time) {
@@ -572,7 +582,7 @@ static void flush_overlay_surface(::window_context* ctx, [[maybe_unused]] std::u
     return;
   }
 
-  ::eglSwapBuffers(ctx->egl.display, ctx->overlay_surface.egl_surface);
+  ::cairo_gl_surface_swapbuffers(ctx->overlay_surface.cairo_surface);
 }
 
 static void redraw(void* data, ::wl_callback* callback, [[maybe_unused]] std::uint32_t time) {
@@ -960,19 +970,11 @@ auto main() -> int {
     perror_exit("VIDIOC_STREAMON");
   }
 
-  if (!::eglMakeCurrent(ctx.egl.display, ctx.overlay_surface.egl_surface,
-                        ctx.overlay_surface.egl_surface, ctx.egl.context)) {
-    std::cerr << "eglMakeCurrent(overlay_surface) failed" << std::endl;
+  ctx.cairo_device = ::cairo_egl_device_create(ctx.egl.display, ctx.egl.context);
+  if (::cairo_device_status(ctx.cairo_device) != CAIRO_STATUS_SUCCESS) {
+    std::cerr << "failed to create cairo egl device" << std::endl;
     return -1;
   }
-
-  ctx.vg = ::nvgCreateGLES2(NVG_ANTIALIAS | NVG_STENCIL_STROKES);
-  if (!ctx.vg) {
-    std::cerr << "failed to initialize nanovg" << std::endl;
-    return -1;
-  }
-
-  ::nvgCreateFont(ctx.vg, "mono", "/usr/share/fonts/ttf/LiberationMono-Regular.ttf");
 
   ctx.epoll_fd = ::epoll_create1(EPOLL_CLOEXEC);
   if (ctx.epoll_fd < 0) {

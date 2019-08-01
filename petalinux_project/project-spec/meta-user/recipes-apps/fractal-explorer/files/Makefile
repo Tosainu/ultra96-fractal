@@ -1,10 +1,10 @@
 APP = fractal-explorer
 
-APP_OBJS = main.o nanovg/src/nanovg.o
+APP_OBJS = main.o
 
-CXXFLAGS += -std=c++17 -Wall -Wextra -isystem nanovg/src
+CXXFLAGS += -std=c++17 -Wall -Wextra `pkg-config --cflags cairo`
 CPPFLAGS += -DNDEBUG
-LDLIBS += -lm -lwayland-client -lwayland-egl -lEGL -lGLESv2 -pthread
+LDLIBS += -lm -lwayland-client -lwayland-egl -lEGL -lGLESv2 `pkg-config --libs cairo` -pthread
 
 all: build
 
