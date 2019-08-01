@@ -84,6 +84,7 @@ struct window_context {
   ::wl_display* display;
 
   ::wl_compositor* compositor;
+  ::wl_subcompositor* subcompositor;
   ::wl_region* region;
   ::wl_shell* shell;
   ::wl_shell_surface* shell_surface;
@@ -97,10 +98,12 @@ struct window_context {
 
   struct surface {
     ::wl_surface* surface;
+    ::wl_subsurface* subsurface;
     ::wl_egl_window* egl_window;
     ::EGLSurface egl_surface;
   };
   surface main_surface;
+  surface overlay_surface;
 
   struct {
     ::GLuint program;
@@ -363,6 +366,7 @@ window_context::surface make_surface(
     std::tuple<const ::EGLDisplay&, const ::EGLConfig&, const ::EGLContext&> egl, int width,
     int height) {
   window_context::surface surface;
+  surface.subsurface = nullptr;
 
   surface.surface = ::wl_compositor_create_surface(compositor);
   if (!surface.surface) {
@@ -380,6 +384,18 @@ window_context::surface make_surface(
   if (surface.egl_surface == EGL_NO_SURFACE) {
     std::runtime_error{"failed to create egl surface"};
   }
+
+  return surface;
+}
+
+window_context::surface make_subsurface(
+    ::wl_compositor* compositor, ::wl_subcompositor* subcompositor,
+    std::tuple<const ::EGLDisplay&, const ::EGLConfig&, const ::EGLContext&> egl,
+    const window_context::surface& parent, int width, int height) {
+  auto surface = make_surface(compositor, egl, width, height);
+
+  surface.subsurface =
+      ::wl_subcompositor_get_subsurface(subcompositor, surface.surface, parent.surface);
 
   return surface;
 }
@@ -412,6 +428,9 @@ static void registry_handle_global(void* data, ::wl_registry* registry, std::uin
   if (ifname == "wl_compositor"sv) {
     auto compositor = ::wl_registry_bind(registry, name, &wl_compositor_interface, 1);
     ctx->compositor = static_cast<::wl_compositor*>(compositor);
+  } else if (ifname == "wl_subcompositor"sv) {
+    auto subcompositor = ::wl_registry_bind(registry, name, &wl_subcompositor_interface, 1);
+    ctx->subcompositor = static_cast<::wl_subcompositor*>(subcompositor);
   } else if (ifname == "wl_shell"sv) {
     auto shell = ::wl_registry_bind(registry, name, &wl_shell_interface, 1);
     ctx->shell = static_cast<::wl_shell*>(shell);
@@ -433,15 +452,12 @@ static const ::wl_callback_listener redraw_listener = {
     redraw,
 };
 
-static void redraw(void* data, ::wl_callback* callback, [[maybe_unused]] std::uint32_t time) {
-  auto ctx = static_cast<::window_context*>(data);
-
-  if (callback) {
-    ::wl_callback_destroy(callback);
+static void redraw_main_surface(::window_context* ctx, [[maybe_unused]] std::uint32_t time) {
+  if (!::eglMakeCurrent(ctx->egl.display, ctx->main_surface.egl_surface,
+                        ctx->main_surface.egl_surface, ctx->egl.context)) {
+    std::cerr << "eglMakeCurrent(main_surface) failed" << std::endl;
+    return;
   }
-
-  const auto width = ctx->width;
-  const auto height = ctx->height;
 
   const auto t1 = std::chrono::steady_clock::now();
 
@@ -489,6 +505,35 @@ static void redraw(void* data, ::wl_callback* callback, [[maybe_unused]] std::ui
     ::glUseProgram(0);
   }
 
+  const auto t2 = std::chrono::steady_clock::now();
+  const auto t1t2 = (t2 - t1) / std::chrono::nanoseconds(1);
+  std::cout << std::setw(12) << t1t2 << std::endl;
+}
+
+static void flush_main_surface(::window_context* ctx, [[maybe_unused]] std::uint32_t time) {
+  if (!::eglMakeCurrent(ctx->egl.display, ctx->main_surface.egl_surface,
+                        ctx->main_surface.egl_surface, ctx->egl.context)) {
+    std::cerr << "eglMakeCurrent(main_surface) failed" << std::endl;
+    return;
+  }
+
+  ::eglSwapBuffers(ctx->egl.display, ctx->main_surface.egl_surface);
+  ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
+}
+
+static void redraw_overlay_surface(::window_context* ctx, [[maybe_unused]] std::uint32_t time) {
+  if (!::eglMakeCurrent(ctx->egl.display, ctx->overlay_surface.egl_surface,
+                        ctx->overlay_surface.egl_surface, ctx->egl.context)) {
+    std::cerr << "eglMakeCurrent(overlay_surface) failed" << std::endl;
+    return;
+  }
+
+  const auto width = ctx->width;
+  const auto height = ctx->height;
+
+  ::glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+  ::glClear(GL_COLOR_BUFFER_BIT);
+
   ::nvgBeginFrame(ctx->vg, width, height, 1.0f);
   {
     ::nvgBeginPath(ctx->vg);
@@ -518,13 +563,30 @@ static void redraw(void* data, ::wl_callback* callback, [[maybe_unused]] std::ui
     nvgText(ctx->vg, 48, 194, "fps: 000.000, 000.000", nullptr);
   }
   ::nvgEndFrame(ctx->vg);
+}
 
-  ::eglSwapBuffers(ctx->egl.display, ctx->main_surface.egl_surface);
-  ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
+static void flush_overlay_surface(::window_context* ctx, [[maybe_unused]] std::uint32_t time) {
+  if (!::eglMakeCurrent(ctx->egl.display, ctx->overlay_surface.egl_surface,
+                        ctx->overlay_surface.egl_surface, ctx->egl.context)) {
+    std::cerr << "eglMakeCurrent(overlay_surface) failed" << std::endl;
+    return;
+  }
 
-  const auto t2 = std::chrono::steady_clock::now();
-  const auto t1t2 = (t2 - t1) / std::chrono::nanoseconds(1);
-  std::cout << std::setw(12) << t1t2 << std::endl;
+  ::eglSwapBuffers(ctx->egl.display, ctx->overlay_surface.egl_surface);
+}
+
+static void redraw(void* data, ::wl_callback* callback, [[maybe_unused]] std::uint32_t time) {
+  auto ctx = static_cast<::window_context*>(data);
+
+  if (callback) {
+    ::wl_callback_destroy(callback);
+  }
+
+  redraw_main_surface(ctx, time);
+  redraw_overlay_surface(ctx, time);
+
+  flush_overlay_surface(ctx, time);
+  flush_main_surface(ctx, time);
 
   ctx->redraw_cb = ::wl_surface_frame(ctx->main_surface.surface);
   ::wl_callback_add_listener(ctx->redraw_cb, &redraw_listener, ctx);
@@ -815,8 +877,8 @@ auto main() -> int {
 
   ::wl_display_dispatch(ctx.display);
   ::wl_display_roundtrip(ctx.display);
-  if (!ctx.compositor || !ctx.shell) {
-    std::cerr << "failed to find compositor or shell" << std::endl;
+  if (!ctx.compositor || !ctx.subcompositor || !ctx.shell) {
+    std::cerr << "failed to find compositor, subcompositor or shell" << std::endl;
     return -1;
   }
 
@@ -829,6 +891,10 @@ auto main() -> int {
   ctx.shell_surface = ::wl_shell_get_shell_surface(ctx.shell, ctx.main_surface.surface);
   ::wl_shell_surface_set_toplevel(ctx.shell_surface);
   ::wl_shell_surface_add_listener(ctx.shell_surface, &shell_surface_listener, &ctx);
+
+  ctx.overlay_surface = make_subsurface(ctx.compositor, ctx.subcompositor,
+                                        std::tie(ctx.egl.display, ctx.egl.config, ctx.egl.context),
+                                        ctx.main_surface, ctx.width, ctx.height);
 
   if (!::eglMakeCurrent(ctx.egl.display, ctx.main_surface.egl_surface, ctx.main_surface.egl_surface,
                         ctx.egl.context)) {
@@ -892,6 +958,12 @@ auto main() -> int {
   ::v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
   if (::ioctl(ctx.video_fd, VIDIOC_STREAMON, &type) == -1) {
     perror_exit("VIDIOC_STREAMON");
+  }
+
+  if (!::eglMakeCurrent(ctx.egl.display, ctx.overlay_surface.egl_surface,
+                        ctx.overlay_surface.egl_surface, ctx.egl.context)) {
+    std::cerr << "eglMakeCurrent(overlay_surface) failed" << std::endl;
+    return -1;
   }
 
   ctx.vg = ::nvgCreateGLES2(NVG_ANTIALIAS | NVG_STENCIL_STROKES);
