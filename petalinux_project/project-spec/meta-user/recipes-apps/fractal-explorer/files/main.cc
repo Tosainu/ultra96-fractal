@@ -84,18 +84,22 @@ struct window_context {
   ::wl_display* display;
 
   ::wl_compositor* compositor;
-  ::wl_egl_window* egl_window;
   ::wl_region* region;
   ::wl_shell* shell;
   ::wl_shell_surface* shell_surface;
-  ::wl_surface* surface;
   ::wl_callback* redraw_cb;
 
   struct {
     ::EGLDisplay display;
     ::EGLContext context;
-    ::EGLSurface surface;
   } egl;
+
+  struct surface {
+    ::wl_surface* surface;
+    ::wl_egl_window* egl_window;
+    ::EGLSurface egl_surface;
+  };
+  surface main_surface;
 
   struct {
     ::GLuint program;
@@ -444,14 +448,14 @@ static void redraw(void* data, ::wl_callback* callback, [[maybe_unused]] std::ui
   }
   ::nvgEndFrame(ctx->vg);
 
-  ::eglSwapBuffers(ctx->egl.display, ctx->egl.surface);
+  ::eglSwapBuffers(ctx->egl.display, ctx->main_surface.egl_surface);
   ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
 
   const auto t2 = std::chrono::steady_clock::now();
   const auto t1t2 = (t2 - t1) / std::chrono::nanoseconds(1);
   std::cout << std::setw(12) << t1t2 << std::endl;
 
-  ctx->redraw_cb = ::wl_surface_frame(ctx->surface);
+  ctx->redraw_cb = ::wl_surface_frame(ctx->main_surface.surface);
   ::wl_callback_add_listener(ctx->redraw_cb, &redraw_listener, ctx);
 }
 
@@ -745,13 +749,13 @@ auto main() -> int {
     return -1;
   }
 
-  ctx.surface = ::wl_compositor_create_surface(ctx.compositor);
-  if (!ctx.surface) {
+  ctx.main_surface.surface = ::wl_compositor_create_surface(ctx.compositor);
+  if (!ctx.main_surface.surface) {
     std::cerr << "failed to create surface" << std::endl;
     return -1;
   }
 
-  ctx.shell_surface = ::wl_shell_get_shell_surface(ctx.shell, ctx.surface);
+  ctx.shell_surface = ::wl_shell_get_shell_surface(ctx.shell, ctx.main_surface.surface);
   ::wl_shell_surface_set_toplevel(ctx.shell_surface);
   ::wl_shell_surface_add_listener(ctx.shell_surface, &shell_surface_listener, &ctx);
 
@@ -796,21 +800,24 @@ auto main() -> int {
     return -1;
   }
 
-  ctx.egl_window = wl_egl_window_create(ctx.surface, ctx.width, ctx.height);
-  if (!ctx.egl_window) {
+  ctx.main_surface.egl_window =
+      wl_egl_window_create(ctx.main_surface.surface, ctx.width, ctx.height);
+  if (!ctx.main_surface.egl_window) {
     std::cerr << "failed to create egl window" << std::endl;
     return -1;
   }
 
   ctx.egl.context = ::eglCreateContext(ctx.egl.display, configs, EGL_NO_CONTEXT, context_attribs);
 
-  ctx.egl.surface = ::eglCreateWindowSurface(
-      ctx.egl.display, configs, static_cast<::EGLNativeWindowType>(ctx.egl_window), nullptr);
-  if (ctx.egl.surface == EGL_NO_SURFACE) {
+  ctx.main_surface.egl_surface = ::eglCreateWindowSurface(
+      ctx.egl.display, configs, static_cast<::EGLNativeWindowType>(ctx.main_surface.egl_window),
+      nullptr);
+  if (ctx.main_surface.egl_surface == EGL_NO_SURFACE) {
     return -1;
   }
 
-  if (!::eglMakeCurrent(ctx.egl.display, ctx.egl.surface, ctx.egl.surface, ctx.egl.context)) {
+  if (!::eglMakeCurrent(ctx.egl.display, ctx.main_surface.egl_surface, ctx.main_surface.egl_surface,
+                        ctx.egl.context)) {
     return -1;
   }
 
