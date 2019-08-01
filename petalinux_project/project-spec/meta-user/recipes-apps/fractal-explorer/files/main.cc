@@ -81,19 +81,15 @@ struct window_context {
   int height;
 
   ::wl_display* display;
-
   ::wl_compositor* compositor;
   ::wl_subcompositor* subcompositor;
-  ::wl_region* region;
   ::wl_shell* shell;
   ::wl_shell_surface* shell_surface;
   ::wl_callback* redraw_cb;
 
-  struct {
-    ::EGLDisplay display;
-    ::EGLConfig config;
-    ::EGLContext context;
-  } egl;
+  ::EGLDisplay egl_display;
+  ::EGLConfig egl_config;
+  ::EGLContext egl_context;
 
   struct surface {
     ::wl_surface* surface;
@@ -377,14 +373,14 @@ window_context::surface make_surface(
 
   surface.egl_window = wl_egl_window_create(surface.surface, width, height);
   if (!surface.egl_window) {
-    std::runtime_error{"failed to create egl window"};
+    throw std::runtime_error{"failed to create egl window"};
   }
 
   const auto& [display, config, context] = egl;
   surface.egl_surface = ::eglCreateWindowSurface(
       display, config, static_cast<::EGLNativeWindowType>(surface.egl_window), nullptr);
   if (surface.egl_surface == EGL_NO_SURFACE) {
-    std::runtime_error{"failed to create egl surface"};
+    throw std::runtime_error{"failed to create egl surface"};
   }
 
   return surface;
@@ -448,15 +444,9 @@ static const ::wl_registry_listener registry_listener = {
     registry_handle_global_remove,
 };
 
-static void redraw(void* data, ::wl_callback* callback, std::uint32_t time);
-
-static const ::wl_callback_listener redraw_listener = {
-    redraw,
-};
-
 static void redraw_main_surface(::window_context* ctx, [[maybe_unused]] std::uint32_t time) {
-  if (!::eglMakeCurrent(ctx->egl.display, ctx->main_surface.egl_surface,
-                        ctx->main_surface.egl_surface, ctx->egl.context)) {
+  if (!::eglMakeCurrent(ctx->egl_display, ctx->main_surface.egl_surface,
+                        ctx->main_surface.egl_surface, ctx->egl_context)) {
     std::cerr << "eglMakeCurrent(main_surface) failed" << std::endl;
     return;
   }
@@ -515,19 +505,19 @@ static void redraw_main_surface(::window_context* ctx, [[maybe_unused]] std::uin
 }
 
 static void flush_main_surface(::window_context* ctx, [[maybe_unused]] std::uint32_t time) {
-  if (!::eglMakeCurrent(ctx->egl.display, ctx->main_surface.egl_surface,
-                        ctx->main_surface.egl_surface, ctx->egl.context)) {
+  if (!::eglMakeCurrent(ctx->egl_display, ctx->main_surface.egl_surface,
+                        ctx->main_surface.egl_surface, ctx->egl_context)) {
     std::cerr << "eglMakeCurrent(main_surface) failed" << std::endl;
     return;
   }
 
-  ::eglSwapBuffers(ctx->egl.display, ctx->main_surface.egl_surface);
+  ::eglSwapBuffers(ctx->egl_display, ctx->main_surface.egl_surface);
   ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
 }
 
 static void redraw_overlay_surface(::window_context* ctx, [[maybe_unused]] std::uint32_t time) {
-  if (!::eglMakeCurrent(ctx->egl.display, ctx->overlay_surface.egl_surface,
-                        ctx->overlay_surface.egl_surface, ctx->egl.context)) {
+  if (!::eglMakeCurrent(ctx->egl_display, ctx->overlay_surface.egl_surface,
+                        ctx->overlay_surface.egl_surface, ctx->egl_context)) {
     std::cerr << "eglMakeCurrent(overlay_surface) failed" << std::endl;
     return;
   }
@@ -542,7 +532,7 @@ static void redraw_overlay_surface(::window_context* ctx, [[maybe_unused]] std::
   auto cr = ::cairo_create(ctx->overlay_surface.cairo_surface);
 
   ::cairo_set_source_rgba(cr, 0.125, 0.125, 0.125, 0.75);
-  ::cairo_rectangle(cr, 31.5f, 63.5f, 437, 153);
+  ::cairo_rectangle(cr, 31.5, 63.5, 437, 153);
   ::cairo_fill_preserve(cr);
 
   ::cairo_set_line_width(cr, 1.0);
@@ -576,14 +566,20 @@ static void redraw_overlay_surface(::window_context* ctx, [[maybe_unused]] std::
 }
 
 static void flush_overlay_surface(::window_context* ctx, [[maybe_unused]] std::uint32_t time) {
-  if (!::eglMakeCurrent(ctx->egl.display, ctx->overlay_surface.egl_surface,
-                        ctx->overlay_surface.egl_surface, ctx->egl.context)) {
+  if (!::eglMakeCurrent(ctx->egl_display, ctx->overlay_surface.egl_surface,
+                        ctx->overlay_surface.egl_surface, ctx->egl_context)) {
     std::cerr << "eglMakeCurrent(overlay_surface) failed" << std::endl;
     return;
   }
 
   ::cairo_gl_surface_swapbuffers(ctx->overlay_surface.cairo_surface);
 }
+
+static void redraw(void* data, ::wl_callback* callback, std::uint32_t time);
+
+static const ::wl_callback_listener redraw_listener = {
+    redraw,
+};
 
 static void redraw(void* data, ::wl_callback* callback, [[maybe_unused]] std::uint32_t time) {
   auto ctx = static_cast<::window_context*>(data);
@@ -867,7 +863,7 @@ auto main() -> int {
           exbuf.fd                         // fd
       };
 
-      std::printf("buffer%d @ %p, length: %u, offset: %u, fd: %d\n", i, bufinfo.ptr, bufinfo.length,
+      std::printf("buffer%d @ %p, length: %u, offset: %u, fd: %d\n", i, mem, bufinfo.length,
                   bufinfo.offset, bufinfo.fd);
 
       if (::ioctl(ctx.video_fd, VIDIOC_QBUF, &buf) == -1) {
@@ -892,10 +888,10 @@ auto main() -> int {
     return -1;
   }
 
-  std::tie(ctx.egl.display, ctx.egl.config, ctx.egl.context) = init_egl(ctx.display);
+  std::tie(ctx.egl_display, ctx.egl_config, ctx.egl_context) = init_egl(ctx.display);
 
   ctx.main_surface =
-      make_surface(ctx.compositor, std::tie(ctx.egl.display, ctx.egl.config, ctx.egl.context),
+      make_surface(ctx.compositor, std::tie(ctx.egl_display, ctx.egl_config, ctx.egl_context),
                    ctx.width, ctx.height);
 
   ctx.shell_surface = ::wl_shell_get_shell_surface(ctx.shell, ctx.main_surface.surface);
@@ -903,11 +899,11 @@ auto main() -> int {
   ::wl_shell_surface_add_listener(ctx.shell_surface, &shell_surface_listener, &ctx);
 
   ctx.overlay_surface = make_subsurface(ctx.compositor, ctx.subcompositor,
-                                        std::tie(ctx.egl.display, ctx.egl.config, ctx.egl.context),
+                                        std::tie(ctx.egl_display, ctx.egl_config, ctx.egl_context),
                                         ctx.main_surface, ctx.width, ctx.height);
 
-  if (!::eglMakeCurrent(ctx.egl.display, ctx.main_surface.egl_surface, ctx.main_surface.egl_surface,
-                        ctx.egl.context)) {
+  if (!::eglMakeCurrent(ctx.egl_display, ctx.main_surface.egl_surface, ctx.main_surface.egl_surface,
+                        ctx.egl_context)) {
     return -1;
   }
 
@@ -952,7 +948,7 @@ auto main() -> int {
       };
       // clang-format on
 
-      ::EGLImageKHR image = ::eglCreateImageKHR(ctx.egl.display, EGL_NO_CONTEXT,
+      ::EGLImageKHR image = ::eglCreateImageKHR(ctx.egl_display, EGL_NO_CONTEXT,
                                                 EGL_LINUX_DMA_BUF_EXT, nullptr, attrs);
       if (image == EGL_NO_IMAGE_KHR) {
         std::cerr << "failed to create image" << std::endl;
@@ -970,7 +966,7 @@ auto main() -> int {
     perror_exit("VIDIOC_STREAMON");
   }
 
-  ctx.cairo_device = ::cairo_egl_device_create(ctx.egl.display, ctx.egl.context);
+  ctx.cairo_device = ::cairo_egl_device_create(ctx.egl_display, ctx.egl_context);
   if (::cairo_device_status(ctx.cairo_device) != CAIRO_STATUS_SUCCESS) {
     std::cerr << "failed to create cairo egl device" << std::endl;
     return -1;
@@ -1013,7 +1009,7 @@ auto main() -> int {
     nexttime.it_value.tv_sec = nexttime.it_interval.tv_sec + now.tv_sec;
     nexttime.it_value.tv_nsec = nexttime.it_interval.tv_nsec + now.tv_nsec;
 
-    if (::timerfd_settime(ctx.timer_fd, TFD_TIMER_ABSTIME, &nexttime, NULL) != 0) {
+    if (::timerfd_settime(ctx.timer_fd, TFD_TIMER_ABSTIME, &nexttime, nullptr) != 0) {
       perror_exit("timerfd_settime");
     }
   }
@@ -1056,7 +1052,7 @@ auto main() -> int {
   redraw(&ctx, nullptr, 0);
 
   ctx.running = true;
-  while (1) {
+  for (;;) {
     ::wl_display_dispatch_pending(ctx.display);
     if (!ctx.running) {
       break;
