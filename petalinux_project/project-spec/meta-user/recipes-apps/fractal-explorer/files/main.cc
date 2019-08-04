@@ -596,15 +596,26 @@ static void redraw_overlay_surface(::window_context* ctx, [[maybe_unused]] std::
   ::cairo_move_to(cr, 364.0, 104.0);
   ::cairo_show_text(cr, "by @myon___");
 
+  constexpr auto max_len = 255;
+  char str[max_len] = {};
+  std::snprintf(str, max_len,
+                "c: %12.8f%+.8fi\n"
+                "x: %12.8f,  y:  %12.8f,  scale: %12.8f\n"
+                "\n"
+                "fps (fpga / display): %.4f / %.4f",
+                ctx->app.cr, ctx->app.ci, ctx->app.offset_x, ctx->app.offset_y, ctx->app.scale,
+                0.0000, 0.0000);
+
   ::cairo_set_font_size(cr, 12);
-  ::cairo_move_to(cr, 48.0, 134.0);
-  ::cairo_show_text(cr, "cr: +00.000000000000    ci: +00.000000000000");
-  ::cairo_move_to(cr, 48.0, 154.0);
-  ::cairo_show_text(cr, "x0: +00.000000000000    dx: +00.000000000000");
-  ::cairo_move_to(cr, 48.0, 174.0);
-  ::cairo_show_text(cr, "y0: +00.000000000000    dy: +00.000000000000");
-  ::cairo_move_to(cr, 48.0, 194.0);
-  ::cairo_show_text(cr, "fps: 000.000, 000.000");
+  for (auto [y, p] = std::tuple{0, std::begin(str)}; p < std::end(str) && *p;) {
+    auto q = p;
+    for (; q < std::end(str) && *q != '\n' && *q != '\0'; ++q)
+      ;
+    *q = '\0';
+    ::cairo_move_to(cr, 48.0, 134.0 + 20 * y++);
+    ::cairo_show_text(cr, p);
+    p = q + 1;
+  }
 
   ::cairo_destroy(cr);
 }
