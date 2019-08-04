@@ -209,56 +209,100 @@ static ::GLuint create_gl_program(const char* vshader_src, const char* fshader_s
   return program;
 }
 
-static std::uint32_t double_to_fix32_4(double v) {
-  union {
-    double d;
-    std::uint64_t u;
-    struct {
-      std::uint64_t frac : 52;
-      std::uint64_t exp : 11;
-      std::uint64_t sign : 1;
-    } s;
-  } df;
-  df.d = v;
+template <std::size_t IntegerWidth>
+class fix {
+  std::uint32_t value_;
 
-  if ((df.u & 0x7ffffffffffffffful) == 0) {
-    return 0;
+public:
+  static constexpr std::size_t value_width = sizeof(std::uint32_t) * 8;
+  static constexpr std::size_t integer_width = IntegerWidth;
+  static constexpr std::size_t fractional_width = value_width - integer_width;
+
+  static constexpr std::uint32_t fractional_mask = (1ul << fractional_width) - 1;
+  static constexpr std::uint32_t intreger_mask = ~fractional_mask;
+
+  static_assert(integer_width < value_width);
+
+  explicit fix(std::uint32_t v) : value_{v} {};
+
+  explicit fix(double v) {
+    value_ = double_to_fix(v);
   }
 
-  auto frac = static_cast<std::int64_t>(df.s.frac) | (1ul << 52);
-  auto exp = static_cast<int16_t>(df.s.exp) - 1023;
-  bool sign = df.s.sign;
-  if (sign) frac = -frac;
+  static std::int32_t double_to_fix(double v) {
+    union {
+      double d;
+      std::uint64_t u;
+      struct {
+        std::uint64_t frac : 52;
+        std::uint64_t exp : 11;
+        std::uint64_t sign : 1;
+      } s;
+    } df;
+    df.d = v;
 
-  int ap_w2 = 52 + 2;
-  int ap_i2 = exp + 2;
-  int ap_f = 32 - 4;
-  int f2 = ap_w2 - ap_i2;
-  int shift = f2 > ap_f ? f2 - ap_f : ap_f - f2;
-
-  if (f2 == ap_f) {
-    return frac;
-  } else if (f2 > ap_f) {
-    if (shift < ap_w2) {
-      return frac >> shift;
-    } else {
-      return df.s.sign ? -1 : 0;
-    }
-  } else {
-    if (shift < 32) {
-      return frac << shift;
-    } else {
+    if ((df.u & 0x7ffffffffffffffful) == 0) {
       return 0;
     }
-  }
-}
 
-static inline double fix32_4_to_double(std::uint32_t v) {
-  if (!v) {
-    return 0.0;
+    auto frac = static_cast<std::int64_t>(df.s.frac) | (1ul << 52);
+    auto exp = static_cast<int16_t>(df.s.exp) - 1023;
+    bool sign = df.s.sign;
+    if (sign) frac = -frac;
+
+    int ap_w2 = 52 + 2;
+    int ap_i2 = exp + 2;
+    constexpr int ap_f = static_cast<int>(fractional_width);
+    int f2 = ap_w2 - ap_i2;
+    int shift = f2 > ap_f ? f2 - ap_f : ap_f - f2;
+
+    if (f2 == ap_f) {
+      return frac;
+    } else if (f2 > ap_f) {
+      if (shift < ap_w2) {
+        return frac >> shift;
+      } else {
+        return df.s.sign ? -1 : 0;
+      }
+    } else {
+      if (shift < static_cast<int>(value_width)) {
+        return frac << shift;
+      } else {
+        return 0;
+      }
+    }
   }
-  return static_cast<double>(static_cast<int32_t>(v)) / (1ul << (32 - 4));
-}
+
+  inline std::uint32_t value() const {
+    return value_;
+  }
+
+  inline double to_double() const {
+    if (!value_) {
+      return 0.0;
+    }
+    return static_cast<double>(static_cast<int32_t>(value_)) / (1ul << fractional_width);
+  }
+
+  inline std::int32_t integer() const {
+    return static_cast<int32_t>(value_) / (1ul << fractional_width);
+  }
+
+  template <std::size_t Digits>
+  inline std::uint64_t fractional() const {
+    static_assert(Digits > 0);
+    constexpr auto d = pow10(Digits);
+    const auto f = static_cast<std::uint64_t>(value_ & fractional_mask);
+    return f * d / (1ul << fractional_width);
+  }
+
+private:
+  static constexpr std::uint64_t pow10(std::size_t n) {
+    std::uint64_t v = 1;
+    for (auto i = 0ul; i < n; ++i) v *= 10;
+    return v;
+  }
+};
 
 class fractal_controller {
   int fd_;
@@ -296,12 +340,12 @@ public:
     }
   }
 
-#define FRACTAL_CONTROLLER_GETTER_SETTER(name, index) \
-  double name() const {                               \
-    return fix32_4_to_double(reg_[index]);            \
-  }                                                   \
-  void set_##name(double name) {                      \
-    reg_[index] = double_to_fix32_4(name);            \
+#define FRACTAL_CONTROLLER_GETTER_SETTER(name, index)       \
+  fix<4> name() const {                                     \
+    return fix<4>{static_cast<std::uint32_t>(reg_[index])}; \
+  }                                                         \
+  void set_##name(double name) {                            \
+    reg_[index] = fix<4>::double_to_fix(name);              \
   }
 
   FRACTAL_CONTROLLER_GETTER_SETTER(x0, 2u)
