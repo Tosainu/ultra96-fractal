@@ -2,9 +2,13 @@ APP = fractal-explorer
 
 APP_OBJS = main.o
 
-CXXFLAGS += -std=c++17 -Wall -Wextra `pkg-config --cflags cairo`
+PKG_CONFIG_LIBRARIES = cairo egl glesv2 wayland-client wayland-egl
+
+CXXFLAGS += -std=c++17 -Wall -Wextra
+CXXFLAGS += $(shell pkg-config --cflags $(PKG_CONFIG_LIBRARIES))
 CPPFLAGS += -DNDEBUG
-LDLIBS += -lm -lwayland-client -lwayland-egl -lEGL -lGLESv2 `pkg-config --libs cairo` -pthread
+LDLIBS += -lm -pthread
+LDLIBS += $(shell pkg-config --libs $(PKG_CONFIG_LIBRARIES))
 
 all: build
 
