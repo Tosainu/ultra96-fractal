@@ -495,8 +495,6 @@ static void redraw_main_surface(::window_context* ctx, [[maybe_unused]] std::uin
     return;
   }
 
-  const auto t1 = std::chrono::steady_clock::now();
-
   ::glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
   ::glClear(GL_COLOR_BUFFER_BIT);
 
@@ -542,10 +540,6 @@ static void redraw_main_surface(::window_context* ctx, [[maybe_unused]] std::uin
     ::glDisableVertexAttribArray(t.a_tex_coord);
     ::glUseProgram(0);
   }
-
-  const auto t2 = std::chrono::steady_clock::now();
-  const auto t1t2 = (t2 - t1) / std::chrono::nanoseconds(1);
-  std::cout << std::setw(12) << t1t2 << std::endl;
 }
 
 static void flush_main_surface(::window_context* ctx, [[maybe_unused]] std::uint32_t time) {
