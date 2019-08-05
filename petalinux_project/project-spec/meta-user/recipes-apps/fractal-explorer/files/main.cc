@@ -579,7 +579,7 @@ static void redraw_overlay_surface(::window_context* ctx) {
   auto cr = ::cairo_create(ctx->overlay_surface.cairo_surface);
 
   ::cairo_set_source_rgba(cr, 0.125, 0.125, 0.125, 0.75);
-  ::cairo_rectangle(cr, 31.5, 63.5, 437, 153);
+  ::cairo_rectangle(cr, 31.5, 63.5, 497, 149);
   ::cairo_fill_preserve(cr);
 
   ::cairo_set_line_width(cr, 1.0);
@@ -589,14 +589,12 @@ static void redraw_overlay_surface(::window_context* ctx) {
   ::cairo_set_source_rgba(cr, 1.0, 1.0, 1.0, 1.0);
   ::cairo_select_font_face(cr, "monospace", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
 
-  ::cairo_set_font_size(cr, 28);
+  ::cairo_set_font_size(cr, 32);
   ::cairo_move_to(cr, 48.0, 104.0);
   ::cairo_show_text(cr, "Julia Set Explorer");
 
-  ::cairo_select_font_face(cr, "monospace", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
-
-  ::cairo_set_font_size(cr, 14);
-  ::cairo_move_to(cr, 364.0, 104.0);
+  ::cairo_set_font_size(cr, 16);
+  ::cairo_move_to(cr, 400.0, 104.0);
   ::cairo_show_text(cr, "by @myon___");
 
   constexpr auto max_len = 255;
@@ -609,7 +607,7 @@ static void redraw_overlay_surface(::window_context* ctx) {
                 ctx->app.cr, ctx->app.ci, ctx->app.offset_x, ctx->app.offset_y, ctx->app.scale,
                 ctx->v4l2_fps, ctx->display_fps);
 
-  ::cairo_set_font_size(cr, 12);
+  ::cairo_set_font_size(cr, 13);
   for (auto [y, p] = std::tuple{0, std::begin(str)}; p < std::end(str) && *p;) {
     auto q = p;
     for (; q < std::end(str) && *q != '\n' && *q != '\0'; ++q)
