@@ -38,6 +38,7 @@ extern "C" {
 #include <linux/videodev2.h>
 }
 
+using namespace std::chrono_literals;
 using namespace std::string_literals;
 using namespace std::string_view_literals;
 
@@ -122,6 +123,14 @@ struct window_context {
   std::array<buffer_context, num_buffers> video_buffers;
   std::optional<std::uint32_t> processing_buffer_index;
   std::optional<std::uint32_t> displaying_buffer_index;
+
+  float v4l2_fps;
+  std::uint64_t v4l2_total_frames;
+  std::chrono::steady_clock::time_point v4l2_fps_updated_time;
+
+  float display_fps;
+  std::uint64_t display_total_frames;
+  std::uint32_t display_fps_updated_time;
 
   bool running;
   int epoll_fd;
@@ -488,7 +497,7 @@ static const ::wl_registry_listener registry_listener = {
     registry_handle_global_remove,
 };
 
-static void redraw_main_surface(::window_context* ctx, [[maybe_unused]] std::uint32_t time) {
+static void redraw_main_surface(::window_context* ctx) {
   if (!::eglMakeCurrent(ctx->egl_display, ctx->main_surface.egl_surface,
                         ctx->main_surface.egl_surface, ctx->egl_context)) {
     std::cerr << "eglMakeCurrent(main_surface) failed" << std::endl;
@@ -542,7 +551,7 @@ static void redraw_main_surface(::window_context* ctx, [[maybe_unused]] std::uin
   }
 }
 
-static void flush_main_surface(::window_context* ctx, [[maybe_unused]] std::uint32_t time) {
+static void flush_main_surface(::window_context* ctx) {
   if (!::eglMakeCurrent(ctx->egl_display, ctx->main_surface.egl_surface,
                         ctx->main_surface.egl_surface, ctx->egl_context)) {
     std::cerr << "eglMakeCurrent(main_surface) failed" << std::endl;
@@ -553,7 +562,7 @@ static void flush_main_surface(::window_context* ctx, [[maybe_unused]] std::uint
   ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
 }
 
-static void redraw_overlay_surface(::window_context* ctx, [[maybe_unused]] std::uint32_t time) {
+static void redraw_overlay_surface(::window_context* ctx) {
   if (!::eglMakeCurrent(ctx->egl_display, ctx->overlay_surface.egl_surface,
                         ctx->overlay_surface.egl_surface, ctx->egl_context)) {
     std::cerr << "eglMakeCurrent(overlay_surface) failed" << std::endl;
@@ -598,7 +607,7 @@ static void redraw_overlay_surface(::window_context* ctx, [[maybe_unused]] std::
                 "\n"
                 "fps (fpga / display): %.4f / %.4f",
                 ctx->app.cr, ctx->app.ci, ctx->app.offset_x, ctx->app.offset_y, ctx->app.scale,
-                0.0000, 0.0000);
+                ctx->v4l2_fps, ctx->display_fps);
 
   ::cairo_set_font_size(cr, 12);
   for (auto [y, p] = std::tuple{0, std::begin(str)}; p < std::end(str) && *p;) {
@@ -614,7 +623,7 @@ static void redraw_overlay_surface(::window_context* ctx, [[maybe_unused]] std::
   ::cairo_destroy(cr);
 }
 
-static void flush_overlay_surface(::window_context* ctx, [[maybe_unused]] std::uint32_t time) {
+static void flush_overlay_surface(::window_context* ctx) {
   if (!::eglMakeCurrent(ctx->egl_display, ctx->overlay_surface.egl_surface,
                         ctx->overlay_surface.egl_surface, ctx->egl_context)) {
     std::cerr << "eglMakeCurrent(overlay_surface) failed" << std::endl;
@@ -630,18 +639,23 @@ static const ::wl_callback_listener redraw_listener = {
     redraw,
 };
 
-static void redraw(void* data, ::wl_callback* callback, [[maybe_unused]] std::uint32_t time) {
+static void redraw(void* data, ::wl_callback* callback, std::uint32_t time) {
   auto ctx = static_cast<::window_context*>(data);
 
   if (callback) {
     ::wl_callback_destroy(callback);
   }
 
-  redraw_main_surface(ctx, time);
-  redraw_overlay_surface(ctx, time);
+  if (++ctx->display_total_frames % 5 == 0) {
+    ctx->display_fps = 5'000.0f / (time - ctx->display_fps_updated_time);
+    ctx->display_fps_updated_time = time;
+  }
 
-  flush_overlay_surface(ctx, time);
-  flush_main_surface(ctx, time);
+  redraw_main_surface(ctx);
+  redraw_overlay_surface(ctx);
+
+  flush_overlay_surface(ctx);
+  flush_main_surface(ctx);
 
   ctx->redraw_cb = ::wl_surface_frame(ctx->main_surface.surface);
   ::wl_callback_add_listener(ctx->redraw_cb, &redraw_listener, ctx);
@@ -698,6 +712,12 @@ static void handle_v4l2_events(window_context* ctx, std::uint32_t events) {
       return;
     }
     new_index = buf.index;
+  }
+
+  if (++ctx->v4l2_total_frames % 5 == 0) {
+    const auto now = std::chrono::steady_clock::now();
+    ctx->v4l2_fps = 5'000'000.0f / ((now - ctx->v4l2_fps_updated_time) / 1us);
+    ctx->v4l2_fps_updated_time = now;
   }
 
   if (ctx->displaying_buffer_index) {
@@ -1010,6 +1030,10 @@ auto main() -> int {
     }
   }
 
+  ctx.v4l2_fps = 0.0f;
+  ctx.v4l2_total_frames = 0;
+  ctx.v4l2_fps_updated_time = std::chrono::steady_clock::now();
+
   ::v4l2_buf_type type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
   if (::ioctl(ctx.video_fd, VIDIOC_STREAMON, &type) == -1) {
     perror_exit("VIDIOC_STREAMON");
@@ -1097,6 +1121,10 @@ auto main() -> int {
   ctx.app.offset_y = 0.0;
 
   ctx.fractal_ctl = std::make_unique<fractal_controller>(0xa0000000);
+
+  ctx.display_fps = 0.0f;
+  ctx.display_total_frames = 0;
+  ctx.display_fps_updated_time = 0;
 
   redraw(&ctx, nullptr, 0);
 
