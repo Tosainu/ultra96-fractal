@@ -135,8 +135,15 @@ set obj [get_filesets sources_1]
 set files [list \
  [file normalize "${origin_dir}/src/fractal.v"] \
  [file normalize "${origin_dir}/src/fractal_axi.v"] \
+ [file normalize "${origin_dir}/src/fractal_generator.sv"] \
 ]
 add_files -norecurse -fileset $obj $files
+
+# Set 'sources_1' fileset file properties for remote files
+set file "$origin_dir/src/fractal_generator.sv"
+set file [file normalize $file]
+set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
+set_property -name "file_type" -value "SystemVerilog" -objects $file_obj
 
 # Set 'sources_1' fileset properties
 set obj [get_filesets sources_1]
@@ -174,6 +181,30 @@ set obj [get_filesets sim_1]
 # Set 'sim_1' fileset properties
 set obj [get_filesets sim_1]
 
+# Create 'fractal_generator' fileset (if not found)
+if {[string equal [get_filesets -quiet fractal_generator] ""]} {
+  create_fileset -simset fractal_generator
+}
+
+# Set 'fractal_generator' fileset object
+set obj [get_filesets fractal_generator]
+set files [list \
+ [file normalize "${origin_dir}/testbench/fractal_generator/fractal_generator_tb.sv"] \
+]
+add_files -norecurse -fileset $obj $files
+
+# Set 'fractal_generator' fileset file properties for remote files
+set file "$origin_dir/testbench/fractal_generator/fractal_generator_tb.sv"
+set file [file normalize $file]
+set file_obj [get_files -of_objects [get_filesets fractal_generator] [list "*$file"]]
+set_property -name "file_type" -value "SystemVerilog" -objects $file_obj
+
+# Set 'fractal_generator' fileset properties
+set obj [get_filesets fractal_generator]
+set_property -name "top" -value "fractal_generator_tb" -objects $obj
+set_property -name "top_auto_set" -value "0" -objects $obj
+set_property -name "top_lib" -value "xil_defaultlib" -objects $obj
+
 # Create 'fractal_axi' fileset (if not found)
 if {[string equal [get_filesets -quiet fractal_axi] ""]} {
   create_fileset -simset fractal_axi
@@ -197,6 +228,8 @@ set obj [get_filesets fractal_axi]
 set_property -name "top" -value "fractal_axi_tb" -objects $obj
 set_property -name "top_auto_set" -value "0" -objects $obj
 set_property -name "top_lib" -value "xil_defaultlib" -objects $obj
+
+current_fileset -simset [ get_filesets fractal_generator ]
 
 # Set 'utils_1' fileset object
 set obj [get_filesets utils_1]

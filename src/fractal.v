@@ -64,4 +64,24 @@ fractal_axi #(
   .S_AXI_RREADY(s_axi_rready)
 );
 
+fractal_generator #(
+) generator(
+  .clk(aclk),
+  .resetn(aresetn),
+  .width(16'd1920),
+  .height(16'd1080),
+  .cr(32'hf9999999),
+  .ci(32'h09999999),
+  .dx(32'h00044444),
+  .dy(32'h00044444),
+  .x0(32'h10000000),
+  .y0(32'h09000000),
+  .data(m_axis_tdata),
+  .frame_start(m_axis_tuser),
+  .line_end(m_axis_tlast),
+  .data_enable(m_axis_tvalid)
+);
+
+assign m_axis_tstrb = {(M_AXIS_TDATA_WIDTH / 8){1'b1}};
+
 endmodule
