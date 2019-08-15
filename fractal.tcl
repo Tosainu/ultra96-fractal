@@ -252,7 +252,10 @@ if { $system_bd_wrapper eq "" } {
   puts "ERROR: Failed to generate system.bd wrapper files.\n"
   return 1
 }
-add_files -norecurse $system_bd_wrapper
+set obj [get_filesets sources_1]
+add_files -norecurse -fileset $obj [list $system_bd_wrapper]
+set_property -name "top" -value "system_wrapper" -objects $obj
+set_property -name "top_auto_set" -value "0" -objects $obj
 
 # Create BD fractal_axi_bd
 source "$origin_dir/block_design/fractal_axi_bd.tcl"
