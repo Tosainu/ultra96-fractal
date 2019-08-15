@@ -46,8 +46,10 @@ initial begin
   wait (frame_start == 1'b1);
   #100ns;
 
-  // width = width + width;
-  // height = height + height;
+  width = width + width;
+  height = height + height;
+  x0 = x0 + dx * 20;
+  y0 = y0 + dy * 20;
 
   wait (frame_start == 1'b1);
   #20ns resetn = 0;

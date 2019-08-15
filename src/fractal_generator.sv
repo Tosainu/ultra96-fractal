@@ -93,6 +93,14 @@ logic [7:0] iter[NUM_PARALLELS - 1:0][NUM_STAGES - 1:0];
 
 logic signed [15:0] width_i;
 logic signed [15:0] height_i;
+always_ff @(posedge clk) begin
+  // changing width or height needs to reset.
+  if (~resetn) begin
+    width_i <= width;
+    height_i <= height;
+  end
+end
+
 logic signed [31:0] cr_i;
 logic signed [31:0] ci_i;
 logic signed [31:0] dx_i;
@@ -100,12 +108,7 @@ logic signed [31:0] dy_i;
 logic signed [31:0] x0_i;
 logic signed [31:0] y0_i;
 always_ff @(posedge clk) begin
-  // TODO: update this condition
-  if (~resetn ||
-      (x == width_i - 1 && y == height_i - 1 &&
-       state2[NUM_LOOPS - 1] && state1[NUM_PARALLELS - 1] && state0[NUM_STAGES - 1])) begin
-    width_i <= width;
-    height_i <= height;
+  if (~resetn || (x == 'b0 && y == 'b0)) begin
     cr_i <= cr;
     ci_i <= ci;
     dx_i <= dx;
