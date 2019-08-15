@@ -1,12 +1,16 @@
 # Proc to create BD system
-proc cr_bd_system { parentCell } {
+proc cr_bd_system { srcset {parentCell ""} } {
 
   # CHANGE DESIGN NAME HERE
   set design_name system
 
   common::send_msg_id "BD_TCL-003" "INFO" "Currently there is no design <$design_name> in project, so creating one..."
 
-  create_bd_design $design_name
+  if { $srcset eq "" } {
+    create_bd_design $design_name
+  } else {
+    create_bd_design -srcset $srcset $design_name
+  }
 
   set bCheckIPsPassed 1
   ##################################################################

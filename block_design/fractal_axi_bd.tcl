@@ -1,5 +1,5 @@
 # Proc to create BD fractal_axi_bd
-proc cr_bd_fractal_axi_bd { parentCell } {
+proc cr_bd_fractal_axi_bd { srcset {parentCell ""} } {
 # The design that will be created by this Tcl proc contains the following 
 # module references:
 # fractal_axi
@@ -11,7 +11,11 @@ proc cr_bd_fractal_axi_bd { parentCell } {
 
   common::send_msg_id "BD_TCL-003" "INFO" "Currently there is no design <$design_name> in project, so creating one..."
 
-  create_bd_design $design_name
+  if { $srcset eq "" } {
+    create_bd_design $design_name
+  } else {
+    create_bd_design -srcset $srcset $design_name
+  }
 
   set bCheckIPsPassed 1
   ##################################################################

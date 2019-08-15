@@ -244,31 +244,30 @@ set obj [get_filesets utils_1]
 
 # Create BD system
 source "$origin_dir/block_design/system.tcl"
-cr_bd_system ""
+set obj [get_filesets sources_1]
+cr_bd_system $obj
 set_property REGISTERED_WITH_MANAGER "1" [get_files system.bd ]
 set_property SYNTH_CHECKPOINT_MODE "Hierarchical" [get_files system.bd ]
-set system_bd_wrapper [make_wrapper -files [get_files system.bd] -top]
-if { $system_bd_wrapper eq "" } {
+set wrapper [make_wrapper -files [get_files system.bd] -top]
+if { $wrapper eq "" } {
   puts "ERROR: Failed to generate system.bd wrapper files.\n"
   return 1
 }
-set obj [get_filesets sources_1]
-add_files -norecurse -fileset $obj [list $system_bd_wrapper]
+add_files -norecurse -fileset $obj [list $wrapper]
 set_property -name "top" -value "system_wrapper" -objects $obj
 set_property -name "top_auto_set" -value "0" -objects $obj
 
 # Create BD fractal_axi_bd
 source "$origin_dir/block_design/fractal_axi_bd.tcl"
-cr_bd_fractal_axi_bd ""
+set obj [get_filesets fractal_axi]
+cr_bd_fractal_axi_bd $obj
 set_property REGISTERED_WITH_MANAGER "1" [get_files fractal_axi_bd.bd ]
-set_property SYNTH_CHECKPOINT_MODE "Hierarchical" [get_files fractal_axi_bd.bd ]
-set fractal_axi_bd_bd_wrapper [make_wrapper -files [get_files fractal_axi_bd.bd] -top]
-if {[string equal $fractal_axi_bd_bd_wrapper ""]} {
+set wrapper [make_wrapper -files [get_files fractal_axi_bd.bd] -top]
+if { $wrapper eq "" } {
   puts "ERROR: Failed to generate fractal_axi_bd.bd wrapper files.\n"
   return 1
 }
-set obj [get_filesets fractal_axi]
-add_files -norecurse -fileset $obj [list $fractal_axi_bd_bd_wrapper]
+add_files -norecurse -fileset $obj [list $wrapper]
 
 # Create 'synth_1' run (if not found)
 if {[string equal [get_runs -quiet synth_1] ""]} {
