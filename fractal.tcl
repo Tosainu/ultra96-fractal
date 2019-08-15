@@ -134,6 +134,7 @@ update_ip_catalog -rebuild
 set obj [get_filesets sources_1]
 set files [list \
  [file normalize "${origin_dir}/src/fractal.v"] \
+ [file normalize "${origin_dir}/src/fractal_axi.v"] \
 ]
 add_files -norecurse -fileset $obj $files
 
@@ -173,6 +174,30 @@ set obj [get_filesets sim_1]
 # Set 'sim_1' fileset properties
 set obj [get_filesets sim_1]
 
+# Create 'fractal_axi' fileset (if not found)
+if {[string equal [get_filesets -quiet fractal_axi] ""]} {
+  create_fileset -simset fractal_axi
+}
+
+# Set 'fractal_axi' fileset object
+set obj [get_filesets fractal_axi]
+set files [list \
+ [file normalize "${origin_dir}/testbench/fractal_axi/fractal_axi_tb.sv"] \
+]
+add_files -norecurse -fileset $obj $files
+
+# Set 'fractal_axi' fileset file properties for remote files
+set file "$origin_dir/testbench/fractal_axi/fractal_axi_tb.sv"
+set file [file normalize $file]
+set file_obj [get_files -of_objects [get_filesets fractal_axi] [list "*$file"]]
+set_property -name "file_type" -value "SystemVerilog" -objects $file_obj
+
+# Set 'fractal_axi' fileset properties
+set obj [get_filesets fractal_axi]
+set_property -name "top" -value "fractal_axi_tb" -objects $obj
+set_property -name "top_auto_set" -value "0" -objects $obj
+set_property -name "top_lib" -value "xil_defaultlib" -objects $obj
+
 # Set 'utils_1' fileset object
 set obj [get_filesets utils_1]
 # Empty (no sources present)
@@ -195,6 +220,19 @@ if { $system_bd_wrapper eq "" } {
   return 1
 }
 add_files -norecurse $system_bd_wrapper
+
+# Create BD fractal_axi_bd
+source "$origin_dir/block_design/fractal_axi_bd.tcl"
+cr_bd_fractal_axi_bd ""
+set_property REGISTERED_WITH_MANAGER "1" [get_files fractal_axi_bd.bd ]
+set_property SYNTH_CHECKPOINT_MODE "Hierarchical" [get_files fractal_axi_bd.bd ]
+set fractal_axi_bd_bd_wrapper [make_wrapper -files [get_files fractal_axi_bd.bd] -top]
+if {[string equal $fractal_axi_bd_bd_wrapper ""]} {
+  puts "ERROR: Failed to generate fractal_axi_bd.bd wrapper files.\n"
+  return 1
+}
+set obj [get_filesets fractal_axi]
+add_files -norecurse -fileset $obj [list $fractal_axi_bd_bd_wrapper]
 
 # Create 'synth_1' run (if not found)
 if {[string equal [get_runs -quiet synth_1] ""]} {

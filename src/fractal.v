@@ -34,4 +34,34 @@ module fractal #(
   input  wire m_axis_tready
 );
 
+wire [((2**S_AXI_ADDR_WIDTH) * 8) - 1:0] registers;
+
+fractal_axi #(
+  .S_AXI_DATA_WIDTH(S_AXI_DATA_WIDTH),
+  .S_AXI_ADDR_WIDTH(S_AXI_ADDR_WIDTH)
+) s_axi(
+  .registers(registers),
+  .S_AXI_ACLK(aclk),
+  .S_AXI_ARESETN(aresetn),
+  .S_AXI_AWADDR(s_axi_awaddr),
+  .S_AXI_AWPROT(s_axi_awprot),
+  .S_AXI_AWVALID(s_axi_awvalid),
+  .S_AXI_AWREADY(s_axi_awready),
+  .S_AXI_WDATA(s_axi_wdata),
+  .S_AXI_WSTRB(s_axi_wstrb),
+  .S_AXI_WVALID(s_axi_wvalid),
+  .S_AXI_WREADY(s_axi_wready),
+  .S_AXI_BRESP(s_axi_bresp),
+  .S_AXI_BVALID(s_axi_bvalid),
+  .S_AXI_BREADY(s_axi_bready),
+  .S_AXI_ARADDR(s_axi_araddr),
+  .S_AXI_ARPROT(s_axi_arprot),
+  .S_AXI_ARVALID(s_axi_arvalid),
+  .S_AXI_ARREADY(s_axi_arready),
+  .S_AXI_RDATA(s_axi_rdata),
+  .S_AXI_RRESP(s_axi_rresp),
+  .S_AXI_RVALID(s_axi_rvalid),
+  .S_AXI_RREADY(s_axi_rready)
+);
+
 endmodule
