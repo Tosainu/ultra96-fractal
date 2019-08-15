@@ -132,7 +132,10 @@ update_ip_catalog -rebuild
 
 # Set 'sources_1' fileset object
 set obj [get_filesets sources_1]
-# Empty (no sources present)
+set files [list \
+ [file normalize "${origin_dir}/src/fractal.v"] \
+]
+add_files -norecurse -fileset $obj $files
 
 # Set 'sources_1' fileset properties
 set obj [get_filesets sources_1]
