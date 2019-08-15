@@ -1,6 +1,6 @@
 module fractal #(
   localparam integer S_AXI_DATA_WIDTH = 32,
-  localparam integer S_AXI_ADDR_WIDTH = 4,
+  localparam integer S_AXI_ADDR_WIDTH = 6,
   localparam integer M_AXIS_TDATA_WIDTH = 8
 ) (
   input  wire aclk,
@@ -64,18 +64,28 @@ fractal_axi #(
   .S_AXI_RREADY(s_axi_rready)
 );
 
+wire  [7:0] generator_ctrl = registers[0+:8];
+wire signed [31:0] generator_x0 = registers[('h10 * 8)+:32];
+wire signed [31:0] generator_y0 = registers[('h18 * 8)+:32];
+wire signed [31:0] generator_dx = registers[('h20 * 8)+:32];
+wire signed [31:0] generator_dy = registers[('h28 * 8)+:32];
+wire signed [31:0] generator_cr = registers[('h30 * 8)+:32];
+wire signed [31:0] generator_ci = registers[('h38 * 8)+:32];
+
+wire generator_resetn = aresetn && generator_ctrl[0];
+
 fractal_generator #(
 ) generator(
   .clk(aclk),
-  .resetn(aresetn),
-  .width(16'd1920),
-  .height(16'd1080),
-  .cr(32'hf9999999),
-  .ci(32'h09999999),
-  .dx(32'h00044444),
-  .dy(32'h00044444),
-  .x0(32'h10000000),
-  .y0(32'h09000000),
+  .resetn(generator_resetn),
+  .width(16'd1920),  // TODO:
+  .height(16'd1080), // TODO:
+  .cr(generator_cr),
+  .ci(generator_ci),
+  .dx(generator_dx),
+  .dy(generator_dy),
+  .x0(generator_x0),
+  .y0(generator_y0),
   .data(m_axis_tdata),
   .frame_start(m_axis_tuser),
   .line_end(m_axis_tlast),
