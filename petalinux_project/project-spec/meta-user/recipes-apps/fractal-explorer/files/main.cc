@@ -140,7 +140,7 @@ struct window_context {
 
   struct app_state {
     std::uint64_t animation_frame;
-    double cr, ci, scale, offset_x, offset_y;
+    double cr, ci, scale, scale_q, offset_x, offset_y;
   } app;
 
   struct {
@@ -756,33 +756,40 @@ static void handle_timer_events(window_context* ctx, std::uint32_t events) {
       return;
     }
 
+    auto& app = ctx->app;
+
+    double shift_x = 0;
+    double shift_y = 0;
+
     if (ctx->joystick_fd >= 0) {
       const auto& j = ctx->joystick;
-      auto& s = ctx->app;
 
-      if (j.buttons[1] && s.scale <= 100) s.scale += 0.001;
-      if (j.buttons[2] && s.scale >= 0.0) s.scale -= 0.001;
+      if (j.buttons[1] && app.scale_q >= -2.0) app.scale_q -= 0.001;
+      if (j.buttons[2] && app.scale_q <= 7.25) app.scale_q += 0.001;
 
-      if (j.axes[4] > 0) s.offset_x += 0.001;
-      if (j.axes[4] < 0) s.offset_x -= 0.001;
+      if (j.axes[4] > 0) shift_x += 2.0;
+      if (j.axes[4] < 0) shift_x -= 2.0;
 
-      if (j.axes[5] < 0) s.offset_y += 0.001;
-      if (j.axes[5] > 0) s.offset_y -= 0.001;
+      if (j.axes[5] < 0) shift_y += 2.0;
+      if (j.axes[5] > 0) shift_y -= 2.0;
     }
+
+    app.scale = std::exp(app.scale_q - 1.0);
 
     {
       constexpr auto ratio = 1080.0 / 1920.0;
-      const auto cr = ctx->app.cr;
-      const auto ci = ctx->app.ci;
-      const auto scale = ctx->app.scale;
-      const auto x1 = 1.0 * scale;
-      const auto y1 = ratio * scale;
+      const auto cr = app.cr;
+      const auto ci = app.ci;
+      const auto scale_inv = 1.0 / app.scale;
+      const auto x1 = 1.0 * scale_inv;
+      const auto y1 = ratio * scale_inv;
       const auto dx = 2.0 * x1 / 1920.0;
       const auto dy = 2.0 * y1 / 1080.0;
-      const auto offset_x = ctx->app.offset_x;
-      const auto offset_y = ctx->app.offset_y;
-      const auto x0 = x1 - offset_x;
-      const auto y0 = y1 + offset_y;
+
+      app.offset_x += dx * shift_x;
+      app.offset_y += dy * shift_y;
+      const auto x0 = x1 - app.offset_x;
+      const auto y0 = y1 + app.offset_y;
 
       ctx->fractal_ctl->set_cr(cr);
       ctx->fractal_ctl->set_ci(ci);
@@ -1115,6 +1122,7 @@ auto main() -> int {
   ctx.app.cr = -0.4;
   ctx.app.ci = 0.6;
   ctx.app.scale = 1.0;
+  ctx.app.scale_q = 1.0;
   ctx.app.offset_x = 0.0;
   ctx.app.offset_y = 0.0;
 
