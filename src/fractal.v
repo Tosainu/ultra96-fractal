@@ -1,4 +1,6 @@
 module fractal #(
+  parameter integer NUM_PARALLELS = 24,
+
   localparam integer S_AXI_DATA_WIDTH = 32,
   localparam integer S_AXI_ADDR_WIDTH = 6,
   localparam integer M_AXIS_TDATA_WIDTH = 8
@@ -75,6 +77,7 @@ wire signed [31:0] generator_ci = registers[('h38 * 8)+:32];
 wire generator_resetn = aresetn && generator_ctrl[0];
 
 fractal_generator #(
+  .NUM_PARALLELS(NUM_PARALLELS)
 ) generator(
   .clk(aclk),
   .resetn(generator_resetn),

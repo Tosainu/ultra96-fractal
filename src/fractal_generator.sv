@@ -1,4 +1,5 @@
 module fractal_generator #(
+  parameter integer NUM_PARALLELS = 24
 ) (
   input         clk,
   input         resetn,
@@ -19,7 +20,6 @@ module fractal_generator #(
 localparam MAX_ITER = 255;
 localparam NUM_PRE_STAGES = 4;
 localparam NUM_STAGES = 6;
-localparam NUM_PARALLELS = 24;
 localparam NUM_LOOPS = (MAX_ITER + NUM_PARALLELS - 1) / NUM_PARALLELS;
 
 const bit [NUM_STAGES - 1:0] state0_begin = 'b1;
