@@ -123,13 +123,6 @@ if {[string equal [get_filesets -quiet sources_1] ""]} {
   create_fileset -srcset sources_1
 }
 
-# Set IP repository paths
-set obj [get_filesets sources_1]
-set_property "ip_repo_paths" "[file normalize "$origin_dir/hls_project"]" $obj
-
-# Rebuild user ip_repo's index before adding any source files
-update_ip_catalog -rebuild
-
 # Set 'sources_1' fileset object
 set obj [get_filesets sources_1]
 set files [list \
@@ -144,6 +137,10 @@ set file "$origin_dir/src/fractal_generator.sv"
 set file [file normalize $file]
 set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
 set_property -name "file_type" -value "SystemVerilog" -objects $file_obj
+
+
+# Set 'sources_1' fileset file properties for local files
+# None
 
 # Set 'sources_1' fileset properties
 set obj [get_filesets sources_1]
@@ -199,6 +196,10 @@ set file [file normalize $file]
 set file_obj [get_files -of_objects [get_filesets fractal_generator] [list "*$file"]]
 set_property -name "file_type" -value "SystemVerilog" -objects $file_obj
 
+
+# Set 'fractal_generator' fileset file properties for local files
+# None
+
 # Set 'fractal_generator' fileset properties
 set obj [get_filesets fractal_generator]
 set_property -name "top" -value "fractal_generator_tb" -objects $obj
@@ -222,6 +223,10 @@ set file "$origin_dir/testbench/fractal_axi/fractal_axi_tb.sv"
 set file [file normalize $file]
 set file_obj [get_files -of_objects [get_filesets fractal_axi] [list "*$file"]]
 set_property -name "file_type" -value "SystemVerilog" -objects $file_obj
+
+
+# Set 'fractal_axi' fileset file properties for local files
+# None
 
 # Set 'fractal_axi' fileset properties
 set obj [get_filesets fractal_axi]
