@@ -19,7 +19,8 @@ module fractal_generator #(
 
 localparam MAX_ITER = 255;
 localparam NUM_PRE_STAGES = 0;
-localparam NUM_STAGES = 6;
+localparam NUM_MULTIPLIER_STAGES = 5;
+localparam NUM_STAGES = 1 + NUM_MULTIPLIER_STAGES;
 localparam NUM_LOOPS = (MAX_ITER + NUM_PARALLELS - 1) / NUM_PARALLELS;
 
 const bit [NUM_STAGES - 1:0] state0_begin = 'b1;
@@ -163,18 +164,22 @@ end
 logic signed [31:0] zr[NUM_PARALLELS - 1:0];  // Re(z)
 logic signed [31:0] zi[NUM_PARALLELS - 1:0];  // Im(z)
 
-logic signed [63:0] zr2[NUM_PARALLELS - 1:0][0:4]; // Re(z) * Re(z)
-logic signed [63:0] zi2[NUM_PARALLELS - 1:0][0:4]; // Im(z) * Im(z)
-logic signed [63:0] zri[NUM_PARALLELS - 1:0][0:4]; // Re(z) * Im(z)
+logic signed [63:0] zr2[NUM_PARALLELS - 1:0][0:NUM_MULTIPLIER_STAGES - 1]; // Re(z) * Re(z)
+logic signed [63:0] zi2[NUM_PARALLELS - 1:0][0:NUM_MULTIPLIER_STAGES - 1]; // Im(z) * Im(z)
+logic signed [63:0] zri[NUM_PARALLELS - 1:0][0:NUM_MULTIPLIER_STAGES - 1]; // Re(z) * Im(z)
 
 wire signed [63:0] zz_r[NUM_PARALLELS - 1:0]; // Re(z^2)
 wire signed [63:0] zz_i[NUM_PARALLELS - 1:0]; // Im(z^2)
 wire signed [63:0] z_sq[NUM_PARALLELS - 1:0]; // Re(z)^2 * Im(z)^2
+wire signed [31:0] zz_c_r[NUM_PARALLELS - 1:0]; // Re(z^2 + c)
+wire signed [31:0] zz_c_i[NUM_PARALLELS - 1:0]; // Im(z^2 + c)
 
 for (genvar i = 0; i < NUM_PARALLELS; i++) begin
-  assign zz_r[i] = zr2[i][4] - zi2[i][4];
-  assign zz_i[i] = zri[i][4] + zri[i][4];
-  assign z_sq[i] = zr2[i][4] + zi2[i][4];
+  assign zz_r[i] = zr2[i][NUM_MULTIPLIER_STAGES - 1] - zi2[i][NUM_MULTIPLIER_STAGES - 1];
+  assign zz_i[i] = zri[i][NUM_MULTIPLIER_STAGES - 1] + zri[i][NUM_MULTIPLIER_STAGES - 1];
+  assign z_sq[i] = zr2[i][NUM_MULTIPLIER_STAGES - 1] + zi2[i][NUM_MULTIPLIER_STAGES - 1];
+  assign zz_c_r[i] = zz_r[i][28+:32] + cr_i;
+  assign zz_c_i[i] = zz_i[i][28+:32] + ci_i;
 end
 
 bit done[NUM_PARALLELS - 1:0][NUM_STAGES - 1:0];
@@ -191,8 +196,8 @@ always_ff @(posedge clk) begin
     iter[0][0] <= 8'h0;
   end
   else begin
-    zr[0] <= zz_r[NUM_PARALLELS - 1][59:28] + cr_i;
-    zi[0] <= zz_i[NUM_PARALLELS - 1][59:28] + ci_i;
+    zr[0] <= zz_c_r[NUM_PARALLELS - 1];
+    zi[0] <= zz_c_i[NUM_PARALLELS - 1];
     done[0][0] <= done_next[NUM_PARALLELS - 1];
     if (done_next[NUM_PARALLELS - 1] || iter[NUM_PARALLELS - 1][NUM_STAGES - 1] == MAX_ITER)
       iter[0][0] <= iter[NUM_PARALLELS - 1][NUM_STAGES - 1];
@@ -202,8 +207,8 @@ always_ff @(posedge clk) begin
 end
 for (genvar i = 1; i < NUM_PARALLELS; i++) begin
   always_ff @(posedge clk) begin
-    zr[i] <= zz_r[i - 1][59:28] + cr_i;
-    zi[i] <= zz_i[i - 1][59:28] + ci_i;
+    zr[i] <= zz_c_r[i - 1];
+    zi[i] <= zz_c_i[i - 1];
     done[i][0] <= done_next[i - 1];
     if (done_next[i - 1] || iter[i - 1][NUM_STAGES - 1] == MAX_ITER)
       iter[i][0] <= iter[i - 1][NUM_STAGES - 1];
@@ -212,28 +217,23 @@ for (genvar i = 1; i < NUM_PARALLELS; i++) begin
   end
 end
 
-// stage 1 - 5
+// stage 1
 for (genvar i = 0; i < NUM_PARALLELS; i++) begin
   always_ff @(posedge clk) begin
     zr2[i][0] <= zr[i] * zr[i];
     zi2[i][0] <= zi[i] * zi[i];
     zri[i][0] <= zr[i] * zi[i];
+  end
+end
 
-    zr2[i][1] <= zr2[i][0];
-    zi2[i][1] <= zi2[i][0];
-    zri[i][1] <= zri[i][0];
-
-    zr2[i][2] <= zr2[i][1];
-    zi2[i][2] <= zi2[i][1];
-    zri[i][2] <= zri[i][1];
-
-    zr2[i][3] <= zr2[i][2];
-    zi2[i][3] <= zi2[i][2];
-    zri[i][3] <= zri[i][2];
-
-    zr2[i][4] <= zr2[i][3];
-    zi2[i][4] <= zi2[i][3];
-    zri[i][4] <= zri[i][3];
+// stage 2 ~ NUM_STAGES - 1
+for (genvar i = 0; i < NUM_PARALLELS; i++) begin
+  for (genvar j = 1; j < NUM_MULTIPLIER_STAGES; j++) begin
+    always_ff @(posedge clk) begin
+      zr2[i][j] <= zr2[i][j - 1];
+      zi2[i][j] <= zi2[i][j - 1];
+      zri[i][j] <= zri[i][j - 1];
+    end
   end
 end
 
