@@ -104,20 +104,27 @@ always_ff @(posedge clk) begin
   end
 end
 
-logic signed [31:0] cr_i;
-logic signed [31:0] ci_i;
 logic signed [31:0] dx_i;
 logic signed [31:0] dy_i;
 logic signed [31:0] x0_i;
 logic signed [31:0] y0_i;
 always_ff @(posedge clk) begin
   if (~resetn || (x == 'b0 && y == 'b0)) begin
-    cr_i <= cr;
-    ci_i <= ci;
     dx_i <= dx;
     dy_i <= dy;
     x0_i <= x0;
     y0_i <= y0;
+  end
+end
+
+logic signed [31:0] cr_i[NUM_PARALLELS - 1:0];
+logic signed [31:0] ci_i[NUM_PARALLELS - 1:0];
+for (genvar i = 0; i < NUM_PARALLELS; i++) begin
+  always_ff @(posedge clk) begin
+    if (~resetn || (x == 'b0 && y == 'b0)) begin
+      cr_i[i] <= cr;
+      ci_i[i] <= ci;
+    end
   end
 end
 
@@ -178,8 +185,8 @@ for (genvar i = 0; i < NUM_PARALLELS; i++) begin
   assign zz_r[i] = zr2[i][NUM_MULTIPLIER_STAGES - 1] - zi2[i][NUM_MULTIPLIER_STAGES - 1];
   assign zz_i[i] = zri[i][NUM_MULTIPLIER_STAGES - 1] + zri[i][NUM_MULTIPLIER_STAGES - 1];
   assign z_sq[i] = zr2[i][NUM_MULTIPLIER_STAGES - 1] + zi2[i][NUM_MULTIPLIER_STAGES - 1];
-  assign zz_c_r[i] = zz_r[i][28+:32] + cr_i;
-  assign zz_c_i[i] = zz_i[i][28+:32] + ci_i;
+  assign zz_c_r[i] = zz_r[i][28+:32] + cr_i[i];
+  assign zz_c_i[i] = zz_i[i][28+:32] + ci_i[i];
 end
 
 bit done[NUM_PARALLELS - 1:0][NUM_STAGES - 1:0];
