@@ -18,7 +18,7 @@ module fractal_generator #(
 );
 
 localparam MAX_ITER = 255;
-localparam NUM_PRE_STAGES = 4;
+localparam NUM_PRE_STAGES = 0;
 localparam NUM_STAGES = 6;
 localparam NUM_LOOPS = (MAX_ITER + NUM_PARALLELS - 1) / NUM_PARALLELS;
 
@@ -89,6 +89,8 @@ end
 
 logic signed [15:0] x;
 logic signed [15:0] y;
+logic signed [31:0] z0_r;
+logic signed [31:0] z0_i;
 logic [7:0] iter[NUM_PARALLELS - 1:0][NUM_STAGES - 1:0];
 
 logic signed [15:0] width_i;
@@ -122,6 +124,8 @@ always_ff @(posedge clk) begin
   if (~resetn) begin
     x <= -16'h1;
     y <= -16'h1;
+    z0_r <= 'h0;
+    z0_i <= 'h0;
   end
   else begin
     if ((state2[NUM_LOOPS - 1] &&
@@ -132,28 +136,29 @@ always_ff @(posedge clk) begin
            state0 >= state0_init))) begin
       if (x == -16'h1 || x == width_i - 1) begin
         x <= 16'h00;
-        if (y == -16'h1 || y == height_i - 1)
+        z0_r <= -x0_i;
+        if (y == -16'h1 || y == height_i - 1) begin
           y <= 16'h00;
-        else
+          z0_i <= -y0_i;
+        end
+        else begin
           y <= y + 16'h01;
+          z0_i <= z0_i + dy_i;
+        end
       end
       else begin
         x <= x + 16'h01;
+        z0_r <= z0_r + dx_i;
       end
     end
     else begin
       x <= x;
       y <= y;
+      z0_r <= z0_r;
+      z0_i <= z0_i;
     end
   end
 end
-
-logic signed [15:0] x_dx_a;
-logic signed [31:0] x_dx_b;
-logic signed [31:0] x_dx[0:2];
-logic signed [15:0] y_dy_a;
-logic signed [31:0] y_dy_b;
-logic signed [31:0] y_dy[0:2];
 
 logic signed [31:0] zr[NUM_PARALLELS - 1:0];  // Re(z)
 logic signed [31:0] zi[NUM_PARALLELS - 1:0];  // Im(z)
@@ -177,27 +182,11 @@ wire done_next[NUM_PARALLELS - 1:0];
 for (genvar i = 0; i < NUM_PARALLELS; i++)
   assign done_next[i] = done[i][NUM_STAGES - 1] || z_sq[i] > {8'h4, 56'h0};
 
-always_ff @(posedge clk) begin
-  x_dx_a <= x;
-  x_dx_b <= dx_i;
-  y_dy_a <= y;
-  y_dy_b <= dy_i;
-
-  x_dx[0] <= x_dx_a * x_dx_b;
-  y_dy[0] <= y_dy_a * y_dy_b;
-
-  x_dx[1] <= x_dx[0];
-  y_dy[1] <= y_dy[0];
-
-  x_dx[2] <= x_dx[1];
-  y_dy[2] <= y_dy[1];
-end
-
 // stage 0
 always_ff @(posedge clk) begin
   if (state2[0]) begin
-    zr[0] <= x_dx[2] - x0_i;
-    zi[0] <= y_dy[2] - y0_i;
+    zr[0] <= z0_r;
+    zi[0] <= z0_i;
     done[0][0] <= 1'b0;
     iter[0][0] <= 8'h0;
   end
