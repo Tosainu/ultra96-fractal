@@ -262,18 +262,31 @@ proc create_hier_cell_to_live_video { parentCell nameHier } {
   # Create instance: clk_wiz_0, and set properties
   set clk_wiz_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:clk_wiz:6.0 clk_wiz_0 ]
   set_property -dict [ list \
-   CONFIG.CLKOUT1_JITTER {81.911} \
-   CONFIG.CLKOUT1_PHASE_ERROR {76.967} \
-   CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {250} \
-   CONFIG.CLKOUT2_JITTER {89.612} \
-   CONFIG.CLKOUT2_PHASE_ERROR {76.967} \
+   CONFIG.AUTO_PRIMITIVE {PLL} \
+   CONFIG.CLKOUT1_DRIVES {Buffer} \
+   CONFIG.CLKOUT1_JITTER {111.879} \
+   CONFIG.CLKOUT1_PHASE_ERROR {105.461} \
+   CONFIG.CLKOUT1_REQUESTED_OUT_FREQ {300} \
+   CONFIG.CLKOUT2_DRIVES {Buffer} \
+   CONFIG.CLKOUT2_JITTER {127.220} \
+   CONFIG.CLKOUT2_PHASE_ERROR {105.461} \
    CONFIG.CLKOUT2_REQUESTED_OUT_FREQ {150} \
    CONFIG.CLKOUT2_USED {true} \
-   CONFIG.MMCM_CLKFBOUT_MULT_F {15.000} \
-   CONFIG.MMCM_CLKOUT0_DIVIDE_F {6.000} \
-   CONFIG.MMCM_CLKOUT1_DIVIDE {10} \
+   CONFIG.CLKOUT3_DRIVES {Buffer} \
+   CONFIG.CLKOUT4_DRIVES {Buffer} \
+   CONFIG.CLKOUT5_DRIVES {Buffer} \
+   CONFIG.CLKOUT6_DRIVES {Buffer} \
+   CONFIG.CLKOUT7_DRIVES {Buffer} \
+   CONFIG.FEEDBACK_SOURCE {FDBK_AUTO} \
+   CONFIG.MMCM_BANDWIDTH {OPTIMIZED} \
+   CONFIG.MMCM_CLKFBOUT_MULT_F {9} \
+   CONFIG.MMCM_CLKOUT0_DIVIDE_F {3} \
+   CONFIG.MMCM_CLKOUT1_DIVIDE {6} \
+   CONFIG.MMCM_COMPENSATION {AUTO} \
    CONFIG.MMCM_DIVCLK_DIVIDE {1} \
    CONFIG.NUM_OUT_CLKS {2} \
+   CONFIG.PRIMITIVE {Auto} \
+   CONFIG.USE_LOCKED {true} \
    CONFIG.USE_RESET {false} \
  ] $clk_wiz_0
 
@@ -294,8 +307,8 @@ proc create_hier_cell_to_live_video { parentCell nameHier } {
   # Create instance: rst_clk_wiz_0_150M, and set properties
   set rst_clk_wiz_0_150M [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 rst_clk_wiz_0_150M ]
 
-  # Create instance: rst_clk_wiz_0_250M, and set properties
-  set rst_clk_wiz_0_250M [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 rst_clk_wiz_0_250M ]
+  # Create instance: rst_clk_wiz_0_300M, and set properties
+  set rst_clk_wiz_0_300M [ create_bd_cell -type ip -vlnv xilinx.com:ip:proc_sys_reset:5.0 rst_clk_wiz_0_300M ]
 
   # Create instance: smartconnect_hp0, and set properties
   set smartconnect_hp0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:smartconnect:1.0 smartconnect_hp0 ]
@@ -1901,13 +1914,13 @@ proc create_hier_cell_to_live_video { parentCell nameHier } {
   # Create port connections
   connect_bd_net -net axi_vdma_0_mm2s_introut [get_bd_pins axi_vdma_0/mm2s_introut] [get_bd_pins xlconcat_0/In2]
   connect_bd_net -net axi_vdma_0_s2mm_introut [get_bd_pins axi_vdma_0/s2mm_introut] [get_bd_pins xlconcat_0/In0]
-  connect_bd_net -net clk_wiz_0_clk_out1 [get_bd_pins axi_interconnect_hpm0/ACLK] [get_bd_pins axi_interconnect_hpm0/M00_ACLK] [get_bd_pins axi_interconnect_hpm0/S00_ACLK] [get_bd_pins axis_clock_converter_0/s_axis_aclk] [get_bd_pins axis_data_fifo_0/s_axis_aclk] [get_bd_pins clk_wiz_0/clk_out1] [get_bd_pins fractal_0/aclk] [get_bd_pins rst_clk_wiz_0_250M/slowest_sync_clk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_fpd_aclk]
+  connect_bd_net -net clk_wiz_0_clk_out1 [get_bd_pins axi_interconnect_hpm0/ACLK] [get_bd_pins axi_interconnect_hpm0/M00_ACLK] [get_bd_pins axi_interconnect_hpm0/S00_ACLK] [get_bd_pins axis_clock_converter_0/s_axis_aclk] [get_bd_pins axis_data_fifo_0/s_axis_aclk] [get_bd_pins clk_wiz_0/clk_out1] [get_bd_pins fractal_0/aclk] [get_bd_pins rst_clk_wiz_0_300M/slowest_sync_clk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm0_fpd_aclk]
   connect_bd_net -net clk_wiz_0_clk_out2 [get_bd_pins axi_interconnect_hpm1/ACLK] [get_bd_pins axi_interconnect_hpm1/M00_ACLK] [get_bd_pins axi_interconnect_hpm1/M01_ACLK] [get_bd_pins axi_interconnect_hpm1/S00_ACLK] [get_bd_pins axi_vdma_0/m_axi_mm2s_aclk] [get_bd_pins axi_vdma_0/m_axi_s2mm_aclk] [get_bd_pins axi_vdma_0/m_axis_mm2s_aclk] [get_bd_pins axi_vdma_0/s_axi_lite_aclk] [get_bd_pins axi_vdma_0/s_axis_s2mm_aclk] [get_bd_pins axis_clock_converter_0/m_axis_aclk] [get_bd_pins axis_subset_converter_0/aclk] [get_bd_pins axis_subset_converter_1/aclk] [get_bd_pins clk_wiz_0/clk_out2] [get_bd_pins rst_clk_wiz_0_150M/slowest_sync_clk] [get_bd_pins smartconnect_hp0/aclk] [get_bd_pins smartconnect_hp1/aclk] [get_bd_pins v_axi4s_vid_out_0/aclk] [get_bd_pins v_tc_0/s_axi_aclk] [get_bd_pins zynq_ultra_ps_e_0/maxihpm1_fpd_aclk] [get_bd_pins zynq_ultra_ps_e_0/saxihp0_fpd_aclk] [get_bd_pins zynq_ultra_ps_e_0/saxihp1_fpd_aclk]
-  connect_bd_net -net clk_wiz_0_locked [get_bd_pins clk_wiz_0/locked] [get_bd_pins rst_clk_wiz_0_150M/dcm_locked] [get_bd_pins rst_clk_wiz_0_250M/dcm_locked]
+  connect_bd_net -net clk_wiz_0_locked [get_bd_pins clk_wiz_0/locked] [get_bd_pins rst_clk_wiz_0_150M/dcm_locked] [get_bd_pins rst_clk_wiz_0_300M/dcm_locked]
   connect_bd_net -net rst_clk_wiz_0_150M_interconnect_aresetn [get_bd_pins axi_interconnect_hpm1/ARESETN] [get_bd_pins rst_clk_wiz_0_150M/interconnect_aresetn]
   connect_bd_net -net rst_clk_wiz_0_150M_peripheral_aresetn [get_bd_pins axi_interconnect_hpm1/M00_ARESETN] [get_bd_pins axi_interconnect_hpm1/M01_ARESETN] [get_bd_pins axi_interconnect_hpm1/S00_ARESETN] [get_bd_pins axi_vdma_0/axi_resetn] [get_bd_pins axis_clock_converter_0/m_axis_aresetn] [get_bd_pins axis_subset_converter_0/aresetn] [get_bd_pins axis_subset_converter_1/aresetn] [get_bd_pins rst_clk_wiz_0_150M/peripheral_aresetn] [get_bd_pins smartconnect_hp0/aresetn] [get_bd_pins smartconnect_hp1/aresetn] [get_bd_pins v_axi4s_vid_out_0/aresetn] [get_bd_pins v_tc_0/s_axi_aresetn]
-  connect_bd_net -net rst_clk_wiz_0_250M_interconnect_aresetn [get_bd_pins axi_interconnect_hpm0/ARESETN] [get_bd_pins rst_clk_wiz_0_250M/interconnect_aresetn]
-  connect_bd_net -net rst_clk_wiz_0_250M_peripheral_aresetn [get_bd_pins axi_interconnect_hpm0/M00_ARESETN] [get_bd_pins axi_interconnect_hpm0/S00_ARESETN] [get_bd_pins axis_clock_converter_0/s_axis_aresetn] [get_bd_pins axis_data_fifo_0/s_axis_aresetn] [get_bd_pins fractal_0/aresetn] [get_bd_pins rst_clk_wiz_0_250M/peripheral_aresetn]
+  connect_bd_net -net rst_clk_wiz_0_300M_interconnect_aresetn [get_bd_pins axi_interconnect_hpm0/ARESETN] [get_bd_pins rst_clk_wiz_0_300M/interconnect_aresetn]
+  connect_bd_net -net rst_clk_wiz_0_300M_peripheral_aresetn [get_bd_pins axi_interconnect_hpm0/M00_ARESETN] [get_bd_pins axi_interconnect_hpm0/S00_ARESETN] [get_bd_pins axis_clock_converter_0/s_axis_aresetn] [get_bd_pins axis_data_fifo_0/s_axis_aresetn] [get_bd_pins fractal_0/aresetn] [get_bd_pins rst_clk_wiz_0_300M/peripheral_aresetn]
   connect_bd_net -net to_live_video_dout [get_bd_pins to_live_video/dout] [get_bd_pins zynq_ultra_ps_e_0/dp_live_video_in_pixel1]
   connect_bd_net -net v_axi4s_vid_out_0_vid_active_video [get_bd_pins v_axi4s_vid_out_0/vid_active_video] [get_bd_pins zynq_ultra_ps_e_0/dp_live_video_in_de]
   connect_bd_net -net v_axi4s_vid_out_0_vid_data [get_bd_pins to_live_video/Din] [get_bd_pins v_axi4s_vid_out_0/vid_data]
@@ -1918,7 +1931,7 @@ proc create_hier_cell_to_live_video { parentCell nameHier } {
   connect_bd_net -net xlconcat_0_dout [get_bd_pins xlconcat_0/dout] [get_bd_pins zynq_ultra_ps_e_0/pl_ps_irq0]
   connect_bd_net -net zynq_ultra_ps_e_0_dp_video_ref_clk [get_bd_pins v_axi4s_vid_out_0/vid_io_out_clk] [get_bd_pins v_tc_0/clk] [get_bd_pins zynq_ultra_ps_e_0/dp_video_in_clk] [get_bd_pins zynq_ultra_ps_e_0/dp_video_ref_clk]
   connect_bd_net -net zynq_ultra_ps_e_0_pl_clk0 [get_bd_pins clk_wiz_0/clk_in1] [get_bd_pins zynq_ultra_ps_e_0/pl_clk0]
-  connect_bd_net -net zynq_ultra_ps_e_0_pl_resetn0 [get_bd_pins rst_clk_wiz_0_150M/ext_reset_in] [get_bd_pins rst_clk_wiz_0_250M/ext_reset_in] [get_bd_pins zynq_ultra_ps_e_0/pl_resetn0]
+  connect_bd_net -net zynq_ultra_ps_e_0_pl_resetn0 [get_bd_pins rst_clk_wiz_0_150M/ext_reset_in] [get_bd_pins rst_clk_wiz_0_300M/ext_reset_in] [get_bd_pins zynq_ultra_ps_e_0/pl_resetn0]
 
   # Create address segments
   create_bd_addr_seg -range 0x80000000 -offset 0x00000000 [get_bd_addr_spaces axi_vdma_0/Data_S2MM] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP2/HP0_DDR_LOW] SEG_zynq_ultra_ps_e_0_HP0_DDR_LOW
