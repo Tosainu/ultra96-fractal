@@ -19,7 +19,7 @@ module fractal_generator #(
 
 localparam MAX_ITER = 255;
 localparam NUM_PRE_STAGES = 0;
-localparam NUM_MULTIPLIER_STAGES = 5;
+localparam NUM_MULTIPLIER_STAGES = 7;
 localparam NUM_STAGES = 1 + NUM_MULTIPLIER_STAGES;
 localparam NUM_LOOPS = (MAX_ITER + NUM_PARALLELS - 1) / NUM_PARALLELS;
 
