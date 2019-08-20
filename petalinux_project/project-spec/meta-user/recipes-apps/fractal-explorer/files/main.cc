@@ -316,11 +316,11 @@ private:
 class fractal_controller {
   int fd_;
   std::size_t size_;
-  std::uint64_t* reg_;
+  std::uint32_t* reg_;
 
 public:
   fractal_controller(std::uintptr_t base_addr)
-      : fd_{-1}, reg_{static_cast<std::uint64_t*>(MAP_FAILED)} {
+      : fd_{-1}, reg_{static_cast<std::uint32_t*>(MAP_FAILED)} {
     fd_ = ::open("/dev/mem", O_RDWR | O_SYNC);
     if (fd_ < 0) {
       throw std::runtime_error{"failed to open /dev/mem: "s + std::strerror(errno)};
@@ -332,7 +332,7 @@ public:
     }
     size_ = static_cast<std::size_t>(s);
 
-    reg_ = static_cast<std::uint64_t*>(
+    reg_ = static_cast<std::uint32_t*>(
         ::mmap(nullptr, size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, base_addr));
     if (reg_ == MAP_FAILED) {
       throw std::runtime_error{"mmap: "s + std::strerror(errno)};
@@ -349,20 +349,20 @@ public:
     }
   }
 
-#define FRACTAL_CONTROLLER_GETTER_SETTER(name, index)       \
-  fix<4> name() const {                                     \
-    return fix<4>{static_cast<std::uint32_t>(reg_[index])}; \
-  }                                                         \
-  void set_##name(double name) {                            \
-    reg_[index] = fix<4>::double_to_fix(name);              \
+#define FRACTAL_CONTROLLER_GETTER_SETTER(name, index) \
+  fix<4> name() const {                               \
+    return fix<4>{reg_[index]};                       \
+  }                                                   \
+  void set_##name(double name) {                      \
+    reg_[index] = fix<4>::double_to_fix(name);        \
   }
 
-  FRACTAL_CONTROLLER_GETTER_SETTER(x0, 2u)
-  FRACTAL_CONTROLLER_GETTER_SETTER(y0, 3u)
-  FRACTAL_CONTROLLER_GETTER_SETTER(dx, 4u)
-  FRACTAL_CONTROLLER_GETTER_SETTER(dy, 5u)
-  FRACTAL_CONTROLLER_GETTER_SETTER(cr, 6u)
-  FRACTAL_CONTROLLER_GETTER_SETTER(ci, 7u)
+  FRACTAL_CONTROLLER_GETTER_SETTER(x0, 4u)
+  FRACTAL_CONTROLLER_GETTER_SETTER(y0, 6u)
+  FRACTAL_CONTROLLER_GETTER_SETTER(dx, 8u)
+  FRACTAL_CONTROLLER_GETTER_SETTER(dy, 10u)
+  FRACTAL_CONTROLLER_GETTER_SETTER(cr, 12u)
+  FRACTAL_CONTROLLER_GETTER_SETTER(ci, 14u)
 
 #undef FRACTAL_CONTROLLER_GETTER_SETTER
 };
