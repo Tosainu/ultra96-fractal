@@ -240,6 +240,11 @@ set_property -name "top" -value "fractal_axi_tb" -objects $obj
 set_property -name "top_auto_set" -value "0" -objects $obj
 set_property -name "top_lib" -value "xil_defaultlib" -objects $obj
 
+# Create 'fractal_colorizer' fileset (if not found)
+if {[string equal [get_filesets -quiet fractal_colorizer] ""]} {
+  create_fileset -simset fractal_colorizer
+}
+
 # Set 'fractal_colorizer' fileset object
 set obj [get_filesets fractal_colorizer]
 set files [list \

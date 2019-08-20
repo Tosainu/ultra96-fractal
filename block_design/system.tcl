@@ -245,10 +245,10 @@ proc create_hier_cell_to_live_video { parentCell nameHier } {
    CONFIG.M_TDATA_NUM_BYTES {4} \
    CONFIG.S_HAS_TKEEP {0} \
    CONFIG.S_HAS_TSTRB {1} \
-   CONFIG.S_TDATA_NUM_BYTES {1} \
-   CONFIG.TDATA_REMAP {8'b11111111,tdata[7:0],tdata[7:0],tdata[7:0]} \
+   CONFIG.S_TDATA_NUM_BYTES {3} \
+   CONFIG.TDATA_REMAP {8'b11111111,tdata[15:8],tdata[7:0],tdata[23:16]} \
    CONFIG.TKEEP_REMAP {1'b0} \
-   CONFIG.TSTRB_REMAP {1'b1,tstrb[0:0],tstrb[0:0],tstrb[0:0]} \
+   CONFIG.TSTRB_REMAP {1'b1,tstrb[2:0]} \
  ] $axis_subset_converter_0
 
   # Create instance: axis_subset_converter_1, and set properties
