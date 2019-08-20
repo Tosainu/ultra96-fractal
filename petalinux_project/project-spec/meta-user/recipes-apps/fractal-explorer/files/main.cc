@@ -313,6 +313,33 @@ private:
   }
 };
 
+enum class color_mode : std::uint8_t {
+  gray,
+  red,
+  green,
+  blue,
+  yellow,
+  cyan,
+  magenta,
+  color1,
+};
+
+color_mode next_mode(color_mode m) {
+  if (m == color_mode::color1) {
+    return color_mode::gray;
+  } else {
+    return static_cast<color_mode>(static_cast<std::uint8_t>(m) + 1);
+  }
+}
+
+color_mode prev_mode(color_mode m) {
+  if (m == color_mode::gray) {
+    return color_mode::color1;
+  } else {
+    return static_cast<color_mode>(static_cast<std::uint8_t>(m) - 1);
+  }
+}
+
 class fractal_controller {
   int fd_;
   std::size_t size_;
@@ -347,6 +374,14 @@ public:
     if (reg_ != MAP_FAILED) {
       ::munmap(reg_, size_);
     }
+  }
+
+  color_mode mode() const {
+    return static_cast<color_mode>((reg_[0] & 0xf00) >> 8);
+  }
+
+  void set_mode(color_mode mode) {
+    reg_[0] = (static_cast<std::uint32_t>(mode) << 8) | (reg_[0] & ~0xf00);
   }
 
 #define FRACTAL_CONTROLLER_GETTER_SETTER(name, index) \
@@ -837,6 +872,13 @@ static void handle_joystick_events(window_context* ctx, std::uint32_t events) {
       case JS_EVENT_BUTTON:
         if (jse.number < ctx->joystick.num_buttons) {
           ctx->joystick.buttons[jse.number] = jse.value;
+        }
+
+        if (jse.number == 4 && jse.value) {
+          ctx->fractal_ctl->set_mode(prev_mode(ctx->fractal_ctl->mode()));
+        }
+        if (jse.number == 5 && jse.value) {
+          ctx->fractal_ctl->set_mode(next_mode(ctx->fractal_ctl->mode()));
         }
         break;
     }
