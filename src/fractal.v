@@ -3,7 +3,7 @@ module fractal #(
 
   localparam integer S_AXI_DATA_WIDTH = 32,
   localparam integer S_AXI_ADDR_WIDTH = 6,
-  localparam integer M_AXIS_TDATA_WIDTH = 8
+  localparam integer M_AXIS_TDATA_WIDTH = 24
 ) (
   input  wire aclk,
   input  wire aresetn,
@@ -67,6 +67,7 @@ fractal_axi #(
 );
 
 wire  [7:0] generator_ctrl = registers[0+:8];
+wire  [3:0] colorizer_mode = registers[8+:4];
 wire signed [31:0] generator_x0 = registers[('h10 * 8)+:32];
 wire signed [31:0] generator_y0 = registers[('h18 * 8)+:32];
 wire signed [31:0] generator_dx = registers[('h20 * 8)+:32];
@@ -75,6 +76,11 @@ wire signed [31:0] generator_cr = registers[('h30 * 8)+:32];
 wire signed [31:0] generator_ci = registers[('h38 * 8)+:32];
 
 wire generator_resetn = aresetn && generator_ctrl[0];
+
+wire [7:0] generator_data;
+wire       generator_frame_start;
+wire       generator_line_end;
+wire       generator_data_enable;
 
 fractal_generator #(
   .NUM_PARALLELS(NUM_PARALLELS)
@@ -89,10 +95,24 @@ fractal_generator #(
   .dy(generator_dy),
   .x0(generator_x0),
   .y0(generator_y0),
-  .data(m_axis_tdata),
-  .frame_start(m_axis_tuser),
-  .line_end(m_axis_tlast),
-  .data_enable(m_axis_tvalid)
+  .data(generator_data),
+  .frame_start(generator_frame_start),
+  .line_end(generator_line_end),
+  .data_enable(generator_data_enable)
+);
+
+fractal_colorizer colorizer(
+  .clk(aclk),
+  .resetn(aresetn),
+  .mode(colorizer_mode),
+  .data_in(generator_data),
+  .frame_start_in(generator_frame_start),
+  .line_end_in(generator_line_end),
+  .data_enable_in(generator_data_enable),
+  .data_out(m_axis_tdata),
+  .frame_start_out(m_axis_tuser),
+  .line_end_out(m_axis_tlast),
+  .data_enable_out(m_axis_tvalid)
 );
 
 assign m_axis_tstrb = {(M_AXIS_TDATA_WIDTH / 8){1'b1}};

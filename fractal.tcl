@@ -128,11 +128,17 @@ set obj [get_filesets sources_1]
 set files [list \
  [file normalize "${origin_dir}/src/fractal.v"] \
  [file normalize "${origin_dir}/src/fractal_axi.v"] \
+ [file normalize "${origin_dir}/src/fractal_colorizer.sv"] \
  [file normalize "${origin_dir}/src/fractal_generator.sv"] \
 ]
 add_files -norecurse -fileset $obj $files
 
 # Set 'sources_1' fileset file properties for remote files
+set file "$origin_dir/src/fractal_colorizer.sv"
+set file [file normalize $file]
+set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
+set_property -name "file_type" -value "SystemVerilog" -objects $file_obj
+
 set file "$origin_dir/src/fractal_generator.sv"
 set file [file normalize $file]
 set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
@@ -231,6 +237,29 @@ set_property -name "file_type" -value "SystemVerilog" -objects $file_obj
 # Set 'fractal_axi' fileset properties
 set obj [get_filesets fractal_axi]
 set_property -name "top" -value "fractal_axi_tb" -objects $obj
+set_property -name "top_auto_set" -value "0" -objects $obj
+set_property -name "top_lib" -value "xil_defaultlib" -objects $obj
+
+# Set 'fractal_colorizer' fileset object
+set obj [get_filesets fractal_colorizer]
+set files [list \
+ [file normalize "${origin_dir}/testbench/fractal_colorizer/fractal_colorizer_tb.sv"] \
+]
+add_files -norecurse -fileset $obj $files
+
+# Set 'fractal_colorizer' fileset file properties for remote files
+set file "$origin_dir/testbench/fractal_colorizer/fractal_colorizer_tb.sv"
+set file [file normalize $file]
+set file_obj [get_files -of_objects [get_filesets fractal_colorizer] [list "*$file"]]
+set_property -name "file_type" -value "SystemVerilog" -objects $file_obj
+
+
+# Set 'fractal_colorizer' fileset file properties for local files
+# None
+
+# Set 'fractal_colorizer' fileset properties
+set obj [get_filesets fractal_colorizer]
+set_property -name "top" -value "fractal_colorizer_tb" -objects $obj
 set_property -name "top_auto_set" -value "0" -objects $obj
 set_property -name "top_lib" -value "xil_defaultlib" -objects $obj
 
