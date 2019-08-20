@@ -45,7 +45,7 @@ xpm_memory_sprom #(
   .AUTO_SLEEP_TIME(0),
   .CASCADE_HEIGHT(0),
   .ECC_MODE("no_ecc"),
-  .MEMORY_INIT_FILE("none"),  // TODO
+  .MEMORY_INIT_FILE("color_table.mem"),
   .MEMORY_INIT_PARAM("0"),
   .MEMORY_OPTIMIZATION("true"),
   .MEMORY_PRIMITIVE("auto"),
