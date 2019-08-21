@@ -79,6 +79,9 @@ static int fractal_s_stream(struct v4l2_subdev *subdev, int enable)
 		fractal_write(fractal, FRACTAL_REG_CR, 0xf9999999u);
 		fractal_write(fractal, FRACTAL_REG_CI, 0x09999999u);
 
+		fractal_clr(fractal, FRACTAL_REG_CTRL, 0xf00u);
+		fractal_set(fractal, FRACTAL_REG_CTRL, 0x700u);
+
 		fractal_set(fractal, FRACTAL_REG_CTRL,
 			    FRACTAL_REG_CTRL_AUTO_RESTART |
 			    FRACTAL_REG_CTRL_START);
