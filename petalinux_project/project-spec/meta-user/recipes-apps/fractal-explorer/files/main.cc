@@ -91,6 +91,10 @@ struct window_context {
 
   ::gbm_device* gbm_device;
   ::gbm_surface* gbm_surface;
+  ::gbm_bo* gbm_bo;
+  ::gbm_bo* gbm_bo_next;
+  std::uint32_t fb_id;
+  std::uint32_t fb_id_next;
 
   ::wl_display* display;
   ::wl_compositor* compositor;
@@ -536,6 +540,22 @@ window_context::surface make_surface(
   return surface;
 }
 
+static std::uint32_t next_gbm_fb_id(int drm_fd, ::gbm_bo* bo) {
+  const auto width = gbm_bo_get_width(bo);
+  const auto height = gbm_bo_get_height(bo);
+  const std::uint32_t handles[4] = {gbm_bo_get_handle(bo).u32};
+  const std::uint32_t strides[4] = {gbm_bo_get_stride(bo)};
+  const std::uint32_t offsets[4] = {};
+
+  std::uint32_t fb_id{};
+  if (::drmModeAddFB2(drm_fd, width, height, DRM_FORMAT_ABGR8888, handles, strides, offsets, &fb_id,
+                      0)) {
+    throw std::runtime_error{"drmModeAddFB2: "s + std::strerror(errno)};
+  }
+
+  return fb_id;
+}
+
 static void redraw_main_surface(::window_context* ctx) {
   if (!::eglMakeCurrent(ctx->egl_display, ctx->main_surface.egl_surface,
                         ctx->main_surface.egl_surface, ctx->egl_context)) {
@@ -682,9 +702,49 @@ static void redraw(void* data, ::wl_callback* callback, std::uint32_t time) {
   redraw_overlay_surface(ctx);
 
   flush_main_surface(ctx);
+}
 
-  ctx->redraw_cb = ::wl_surface_frame(ctx->main_surface.surface);
-  ::wl_callback_add_listener(ctx->redraw_cb, &redraw_listener, ctx);
+static void drm_page_flip_handler(int fd, unsigned int frame, unsigned int sec, unsigned int usec,
+                                  void* data) {
+  auto ctx = static_cast<window_context*>(data);
+
+  if (!ctx->gbm_bo_next) {
+    ::drmModeRmFB(ctx->drm_fd, ctx->fb_id);
+    ctx->fb_id = ctx->fb_id_next;
+
+    ::gbm_surface_release_buffer(ctx->gbm_surface, ctx->gbm_bo);
+    ctx->gbm_bo = ctx->gbm_bo_next;
+    ctx->gbm_bo_next = nullptr;
+  }
+
+  redraw(ctx, nullptr, 0);
+
+  ctx->gbm_bo_next = ::gbm_surface_lock_front_buffer(ctx->gbm_surface);
+  ctx->fb_id_next = next_gbm_fb_id(ctx->drm_fd, ctx->gbm_bo_next);
+
+  if (::drmModePageFlip(ctx->drm_fd, ctx->crtc_id, ctx->fb_id_next, DRM_MODE_PAGE_FLIP_EVENT,
+                        ctx)) {
+    std::cerr << "failed to queue page flip: " << std::strerror(errno) << std::endl;
+    ctx->running = false;
+  }
+}
+
+static ::drmEventContext drm_event_context;
+
+static void handle_drm_events(window_context* ctx, std::uint32_t events) {
+  if (events & EPOLLERR || events & EPOLLHUP) {
+    ctx->running = false;
+    return;
+  }
+
+  if (!(events & EPOLLIN)) {
+    return;
+  }
+
+  drm_event_context.version = DRM_EVENT_CONTEXT_VERSION;
+  drm_event_context.page_flip_handler = drm_page_flip_handler;
+
+  ::drmHandleEvent(ctx->drm_fd, &drm_event_context);
 }
 
 static void handle_v4l2_events(window_context* ctx, std::uint32_t events) {
@@ -1129,24 +1189,44 @@ auto main() -> int {
   ctx.display_total_frames = 0;
   ctx.display_fps_updated_time = 0;
 
-  return 0; // TODO
+  {
+    ::glClearColor(0.0, 0.0, 0.0, 1.0);
+    ::glClear(GL_COLOR_BUFFER_BIT);
+    ::eglSwapBuffers(ctx.egl_display, ctx.main_surface.egl_surface);
 
-  redraw(&ctx, nullptr, 0);
+    ctx.gbm_bo = ::gbm_surface_lock_front_buffer(ctx.gbm_surface);
+    ctx.fb_id = next_gbm_fb_id(ctx.drm_fd, ctx.gbm_bo);
+
+    if (::drmModeSetCrtc(ctx.drm_fd, ctx.crtc_id, ctx.fb_id, 0, 0, &ctx.connector_id, 1,
+                         &ctx.display_mode)) {
+      std::cerr << "drmModeSetCrtc: " << std::strerror(errno) << std::endl;
+      return -1;
+    }
+  }
+
+  {
+    ::epoll_event ep{};
+    ep.events = EPOLLIN | EPOLLERR | EPOLLHUP;
+    ep.data.ptr = reinterpret_cast<void*>(handle_drm_events);
+    ::epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.drm_fd, &ep);
+  }
+
+  {
+    redraw(&ctx, nullptr, 0);
+
+    ctx.gbm_bo_next = ::gbm_surface_lock_front_buffer(ctx.gbm_surface);
+    ctx.fb_id_next = next_gbm_fb_id(ctx.drm_fd, ctx.gbm_bo_next);
+
+    if (::drmModePageFlip(ctx.drm_fd, ctx.crtc_id, ctx.fb_id_next, DRM_MODE_PAGE_FLIP_EVENT,
+                          &ctx)) {
+      std::cerr << "failed to queue page flip: " << std::strerror(errno) << std::endl;
+      return -1;
+    }
+  }
 
   ctx.running = true;
   for (;;) {
-    ::wl_display_dispatch_pending(ctx.display);
     if (!ctx.running) {
-      break;
-    }
-
-    int ret = ::wl_display_flush(ctx.display);
-    if (ret < 0 && errno == EAGAIN) {
-      ::epoll_event ep{};
-      ep.events = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP;
-      ep.data.ptr = &ctx;
-      ::epoll_ctl(ctx.epoll_fd, EPOLL_CTL_MOD, ctx.display_fd, &ep);
-    } else if (ret < 0) {
       break;
     }
 
@@ -1157,6 +1237,4 @@ auto main() -> int {
       reinterpret_cast<handler_type>(ep[i].data.ptr)(&ctx, ep[i].events);
     }
   }
-
-  ::wl_display_disconnect(ctx.display);
 }
