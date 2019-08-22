@@ -89,6 +89,9 @@ struct window_context {
   std::uint32_t connector_id;
   ::drmModeModeInfo display_mode;
 
+  ::gbm_device* gbm_device;
+  ::gbm_surface* gbm_surface;
+
   ::wl_display* display;
   ::wl_compositor* compositor;
   ::wl_subcompositor* subcompositor;
@@ -463,7 +466,7 @@ std::tuple<std::uint32_t, std::uint32_t, ::drmModeModeInfo> init_drm(int fd) {
   return std::make_tuple(crtc_id, connector_id, mode);
 }
 
-std::tuple<::EGLDisplay, ::EGLConfig, ::EGLContext> init_egl(::wl_display* native_display) {
+std::tuple<::EGLDisplay, ::EGLConfig, ::EGLContext> init_egl(::EGLDisplay display) {
   // clang-format off
   static const ::EGLint config_attribs[] = {
     EGL_SURFACE_TYPE,    EGL_WINDOW_BIT,
@@ -481,11 +484,6 @@ std::tuple<::EGLDisplay, ::EGLConfig, ::EGLContext> init_egl(::wl_display* nativ
     EGL_NONE,
   };
   // clang-format on
-
-  ::EGLDisplay display = ::eglGetDisplay(static_cast<::EGLNativeDisplayType>(native_display));
-  if (!display) {
-    throw std::runtime_error{"failed to create egl display"};
-  }
 
   if (::eglInitialize(display, nullptr, nullptr) != EGL_TRUE) {
     throw std::runtime_error{"failed to initialize egl display"};
@@ -505,6 +503,30 @@ std::tuple<::EGLDisplay, ::EGLConfig, ::EGLContext> init_egl(::wl_display* nativ
   ::EGLContext context = ::eglCreateContext(display, config, EGL_NO_CONTEXT, context_attribs);
 
   return std::make_tuple(display, config, context);
+}
+
+std::tuple<::EGLDisplay, ::EGLConfig, ::EGLContext> init_egl(::wl_display* native_display) {
+  ::EGLDisplay display = ::eglGetDisplay(static_cast<::EGLNativeDisplayType>(native_display));
+  if (!display) {
+    throw std::runtime_error{"failed to create egl display"};
+  }
+
+  return init_egl(display);
+}
+
+std::tuple<::EGLDisplay, ::EGLConfig, ::EGLContext> init_egl(::gbm_device* gbm) {
+  auto get_platform_display_ext =
+      get_egl_proc<::PFNEGLGETPLATFORMDISPLAYEXTPROC>("eglGetPlatformDisplayEXT");
+  if (!get_platform_display_ext) {
+    throw std::runtime_error{"failed to get eglGetPlatformDisplayEXT"};
+  }
+
+  ::EGLDisplay display = get_platform_display_ext(EGL_PLATFORM_GBM_KHR, gbm, nullptr);
+  if (!display) {
+    throw std::runtime_error{"failed to create egl display"};
+  }
+
+  return init_egl(display);
 }
 
 window_context::surface make_surface(
@@ -1053,6 +1075,27 @@ auto main() -> int {
   if (ctx.drm_fd < 0) {
     perror_exit("open");
   }
+
+  std::tie(ctx.crtc_id, ctx.connector_id, ctx.display_mode) = init_drm(ctx.drm_fd);
+  std::cout << "connector: " << ctx.connector_id << ", mode: " << ctx.display_mode.hdisplay << 'x'
+            << ctx.display_mode.vdisplay << ", crtc: " << ctx.crtc_id << std::endl;
+
+  ctx.gbm_device = ::gbm_create_device(ctx.drm_fd);
+  if (!ctx.gbm_device) {
+    return -1;
+  }
+
+  ctx.gbm_surface =
+      ::gbm_surface_create(ctx.gbm_device, ctx.display_mode.hdisplay, ctx.display_mode.vdisplay,
+                           GBM_FORMAT_ARGB8888, GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
+  if (!ctx.gbm_surface) {
+    std::cerr << "gbm_surface_create: failed to create gbm surface" << std::endl;
+    return -1;
+  }
+
+  std::tie(ctx.egl_display, ctx.egl_config, ctx.egl_context) = init_egl(ctx.gbm_device);
+
+  return 0; // TODO
 
   ctx.display = ::wl_display_connect(nullptr);
   if (!ctx.display) {
