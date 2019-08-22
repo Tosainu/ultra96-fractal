@@ -3755,7 +3755,7 @@ CONFIG_hellopm=y
 #
 # liberation-fonts 
 #
-# CONFIG_liberation-fonts is not set
+CONFIG_liberation-fonts=y
 
 #
 # glew 
