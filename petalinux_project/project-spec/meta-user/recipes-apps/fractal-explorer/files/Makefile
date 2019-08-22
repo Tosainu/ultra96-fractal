@@ -19,4 +19,4 @@ $(APP): $(APP_OBJS)
 
 .PHONY: clean
 clean:
-	-rm -f $(APP_OBJS)
+	-rm -f $(APP) $(APP_OBJS)
