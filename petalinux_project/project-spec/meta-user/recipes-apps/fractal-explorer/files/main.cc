@@ -112,7 +112,6 @@ struct window_context {
     ::cairo_surface_t* cairo_surface;
   };
   surface main_surface;
-  surface overlay_surface;
 
   struct {
     ::GLuint program;
@@ -676,25 +675,25 @@ static void flush_main_surface(::window_context* ctx) {
     return;
   }
 
-  ::eglSwapBuffers(ctx->egl_display, ctx->main_surface.egl_surface);
+  ::cairo_gl_surface_swapbuffers(ctx->main_surface.cairo_surface);
   ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
 }
 
 static void redraw_overlay_surface(::window_context* ctx) {
-  if (!::eglMakeCurrent(ctx->egl_display, ctx->overlay_surface.egl_surface,
-                        ctx->overlay_surface.egl_surface, ctx->egl_context)) {
-    std::cerr << "eglMakeCurrent(overlay_surface) failed" << std::endl;
+  if (!::eglMakeCurrent(ctx->egl_display, ctx->main_surface.egl_surface,
+                        ctx->main_surface.egl_surface, ctx->egl_context)) {
+    std::cerr << "eglMakeCurrent(main_surface) failed" << std::endl;
     return;
   }
 
   const auto width = ctx->width;
   const auto height = ctx->height;
 
-  if (!ctx->overlay_surface.cairo_surface) {
-    ctx->overlay_surface.cairo_surface = ::cairo_gl_surface_create_for_egl(
-        ctx->cairo_device, ctx->overlay_surface.egl_surface, width, height);
+  if (!ctx->main_surface.cairo_surface) {
+    ctx->main_surface.cairo_surface = ::cairo_gl_surface_create_for_egl(
+        ctx->cairo_device, ctx->main_surface.egl_surface, width, height);
   }
-  auto cr = ::cairo_create(ctx->overlay_surface.cairo_surface);
+  auto cr = ::cairo_create(ctx->main_surface.cairo_surface);
 
   ::cairo_set_source_rgba(cr, 0.125, 0.125, 0.125, 0.75);
   ::cairo_rectangle(cr, 31.5, 63.5, 497, 149);
@@ -739,16 +738,6 @@ static void redraw_overlay_surface(::window_context* ctx) {
   ::cairo_destroy(cr);
 }
 
-static void flush_overlay_surface(::window_context* ctx) {
-  if (!::eglMakeCurrent(ctx->egl_display, ctx->overlay_surface.egl_surface,
-                        ctx->overlay_surface.egl_surface, ctx->egl_context)) {
-    std::cerr << "eglMakeCurrent(overlay_surface) failed" << std::endl;
-    return;
-  }
-
-  ::cairo_gl_surface_swapbuffers(ctx->overlay_surface.cairo_surface);
-}
-
 static void redraw(void* data, ::wl_callback* callback, std::uint32_t time);
 
 static const ::wl_callback_listener redraw_listener = {
@@ -770,7 +759,6 @@ static void redraw(void* data, ::wl_callback* callback, std::uint32_t time) {
   redraw_main_surface(ctx);
   redraw_overlay_surface(ctx);
 
-  flush_overlay_surface(ctx);
   flush_main_surface(ctx);
 
   ctx->redraw_cb = ::wl_surface_frame(ctx->main_surface.surface);
@@ -1122,10 +1110,6 @@ auto main() -> int {
   ctx.shell_surface = ::wl_shell_get_shell_surface(ctx.shell, ctx.main_surface.surface);
   ::wl_shell_surface_set_toplevel(ctx.shell_surface);
   ::wl_shell_surface_add_listener(ctx.shell_surface, &shell_surface_listener, &ctx);
-
-  ctx.overlay_surface = make_subsurface(ctx.compositor, ctx.subcompositor,
-                                        std::tie(ctx.egl_display, ctx.egl_config, ctx.egl_context),
-                                        ctx.main_surface, ctx.width, ctx.height);
 
   if (!::eglMakeCurrent(ctx.egl_display, ctx.main_surface.egl_surface, ctx.main_surface.egl_surface,
                         ctx.egl_context)) {
