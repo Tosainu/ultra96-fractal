@@ -504,15 +504,6 @@ std::tuple<::EGLDisplay, ::EGLConfig, ::EGLContext> init_egl(::EGLDisplay displa
   return std::make_tuple(display, config, context);
 }
 
-std::tuple<::EGLDisplay, ::EGLConfig, ::EGLContext> init_egl(::wl_display* native_display) {
-  ::EGLDisplay display = ::eglGetDisplay(static_cast<::EGLNativeDisplayType>(native_display));
-  if (!display) {
-    throw std::runtime_error{"failed to create egl display"};
-  }
-
-  return init_egl(display);
-}
-
 std::tuple<::EGLDisplay, ::EGLConfig, ::EGLContext> init_egl(::gbm_device* gbm) {
   auto get_platform_display_ext =
       get_egl_proc<::PFNEGLGETPLATFORMDISPLAYEXTPROC>("eglGetPlatformDisplayEXT");
@@ -529,90 +520,21 @@ std::tuple<::EGLDisplay, ::EGLConfig, ::EGLContext> init_egl(::gbm_device* gbm) 
 }
 
 window_context::surface make_surface(
-    ::wl_compositor* compositor,
-    std::tuple<const ::EGLDisplay&, const ::EGLConfig&, const ::EGLContext&> egl, int width,
-    int height) {
+    ::gbm_surface* gbm_surface,
+    std::tuple<const ::EGLDisplay&, const ::EGLConfig&, const ::EGLContext&> egl) {
   window_context::surface surface;
   surface.subsurface = nullptr;
   surface.cairo_surface = nullptr;
 
-  surface.surface = ::wl_compositor_create_surface(compositor);
-  if (!surface.surface) {
-    throw std::runtime_error{"failed to create surface"};
-  }
-
-  surface.egl_window = wl_egl_window_create(surface.surface, width, height);
-  if (!surface.egl_window) {
-    throw std::runtime_error{"failed to create egl window"};
-  }
-
   const auto& [display, config, context] = egl;
   surface.egl_surface = ::eglCreateWindowSurface(
-      display, config, static_cast<::EGLNativeWindowType>(surface.egl_window), nullptr);
+      display, config, reinterpret_cast<::EGLNativeWindowType>(gbm_surface), nullptr);
   if (surface.egl_surface == EGL_NO_SURFACE) {
     throw std::runtime_error{"failed to create egl surface"};
   }
 
   return surface;
 }
-
-window_context::surface make_subsurface(
-    ::wl_compositor* compositor, ::wl_subcompositor* subcompositor,
-    std::tuple<const ::EGLDisplay&, const ::EGLConfig&, const ::EGLContext&> egl,
-    const window_context::surface& parent, int width, int height) {
-  auto surface = make_surface(compositor, egl, width, height);
-
-  surface.subsurface =
-      ::wl_subcompositor_get_subsurface(subcompositor, surface.surface, parent.surface);
-
-  return surface;
-}
-
-void shell_surface_handle_ping([[maybe_unused]] void* data, ::wl_shell_surface* shell_surface,
-                               std::uint32_t serial) {
-  ::wl_shell_surface_pong(shell_surface, serial);
-}
-
-void shell_surface_handle_configure([[maybe_unused]] void* data,
-                                    [[maybe_unused]] ::wl_shell_surface* shell_surface,
-                                    [[maybe_unused]] std::uint32_t edges,
-                                    [[maybe_unused]] std::int32_t width,
-                                    [[maybe_unused]] std::int32_t height) {}
-
-void shell_surface_handle_popup_done([[maybe_unused]] void* data,
-                                     [[maybe_unused]] ::wl_shell_surface* shell_surface) {}
-
-const struct wl_shell_surface_listener shell_surface_listener = {
-    shell_surface_handle_ping,
-    shell_surface_handle_configure,
-    shell_surface_handle_popup_done,
-};
-
-static void registry_handle_global(void* data, ::wl_registry* registry, std::uint32_t name,
-                                   const char* interface, [[maybe_unused]] std::uint32_t version) {
-  auto ctx = static_cast<::window_context*>(data);
-
-  const auto ifname = std::string_view{interface};
-  if (ifname == "wl_compositor"sv) {
-    auto compositor = ::wl_registry_bind(registry, name, &wl_compositor_interface, 1);
-    ctx->compositor = static_cast<::wl_compositor*>(compositor);
-  } else if (ifname == "wl_subcompositor"sv) {
-    auto subcompositor = ::wl_registry_bind(registry, name, &wl_subcompositor_interface, 1);
-    ctx->subcompositor = static_cast<::wl_subcompositor*>(subcompositor);
-  } else if (ifname == "wl_shell"sv) {
-    auto shell = ::wl_registry_bind(registry, name, &wl_shell_interface, 1);
-    ctx->shell = static_cast<::wl_shell*>(shell);
-  }
-}
-
-static void registry_handle_global_remove([[maybe_unused]] void* data,
-                                          [[maybe_unused]] ::wl_registry* registry,
-                                          [[maybe_unused]] uint32_t name) {}
-
-static const ::wl_registry_listener registry_listener = {
-    registry_handle_global,
-    registry_handle_global_remove,
-};
 
 static void redraw_main_surface(::window_context* ctx) {
   if (!::eglMakeCurrent(ctx->egl_display, ctx->main_surface.egl_surface,
@@ -763,33 +685,6 @@ static void redraw(void* data, ::wl_callback* callback, std::uint32_t time) {
 
   ctx->redraw_cb = ::wl_surface_frame(ctx->main_surface.surface);
   ::wl_callback_add_listener(ctx->redraw_cb, &redraw_listener, ctx);
-}
-
-static void handle_display_events(window_context* ctx, std::uint32_t events) {
-  if (events & EPOLLERR || events & EPOLLHUP) {
-    ctx->running = false;
-    return;
-  }
-
-  if (events & EPOLLIN) {
-    if (::wl_display_dispatch(ctx->display) == -1) {
-      ctx->running = false;
-      return;
-    }
-  }
-
-  if (events & EPOLLOUT) {
-    int ret = ::wl_display_flush(ctx->display);
-    if (ret == 0) {
-      ::epoll_event ep{};
-      ep.events = EPOLLIN | EPOLLERR | EPOLLHUP;
-      ep.data.ptr = ctx;
-      ::epoll_ctl(ctx->epoll_fd, EPOLL_CTL_MOD, ctx->display_fd, &ep);
-    } else if (ret == -1 && errno != EAGAIN) {
-      ctx->running = false;
-      return;
-    }
-  }
 }
 
 static void handle_v4l2_events(window_context* ctx, std::uint32_t events) {
@@ -1083,33 +978,8 @@ auto main() -> int {
 
   std::tie(ctx.egl_display, ctx.egl_config, ctx.egl_context) = init_egl(ctx.gbm_device);
 
-  return 0; // TODO
-
-  ctx.display = ::wl_display_connect(nullptr);
-  if (!ctx.display) {
-    std::cerr << "failed to connect display" << std::endl;
-    return -1;
-  }
-
-  ::wl_registry* registry = ::wl_display_get_registry(ctx.display);
-  ::wl_registry_add_listener(registry, &registry_listener, &ctx);
-
-  ::wl_display_dispatch(ctx.display);
-  ::wl_display_roundtrip(ctx.display);
-  if (!ctx.compositor || !ctx.subcompositor || !ctx.shell) {
-    std::cerr << "failed to find compositor, subcompositor or shell" << std::endl;
-    return -1;
-  }
-
-  std::tie(ctx.egl_display, ctx.egl_config, ctx.egl_context) = init_egl(ctx.display);
-
   ctx.main_surface =
-      make_surface(ctx.compositor, std::tie(ctx.egl_display, ctx.egl_config, ctx.egl_context),
-                   ctx.width, ctx.height);
-
-  ctx.shell_surface = ::wl_shell_get_shell_surface(ctx.shell, ctx.main_surface.surface);
-  ::wl_shell_surface_set_toplevel(ctx.shell_surface);
-  ::wl_shell_surface_add_listener(ctx.shell_surface, &shell_surface_listener, &ctx);
+      make_surface(ctx.gbm_surface, std::tie(ctx.egl_display, ctx.egl_config, ctx.egl_context));
 
   if (!::eglMakeCurrent(ctx.egl_display, ctx.main_surface.egl_surface, ctx.main_surface.egl_surface,
                         ctx.egl_context)) {
@@ -1190,14 +1060,6 @@ auto main() -> int {
     perror_exit("epoll_create1");
   }
 
-  ctx.display_fd = ::wl_display_get_fd(ctx.display);
-  {
-    ::epoll_event ep{};
-    ep.events = EPOLLIN | EPOLLERR | EPOLLHUP;
-    ep.data.ptr = reinterpret_cast<void*>(handle_display_events);
-    ::epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.display_fd, &ep);
-  }
-
   {
     ::epoll_event ep{};
     ep.events = EPOLLIN | EPOLLERR | EPOLLHUP;
@@ -1266,6 +1128,8 @@ auto main() -> int {
   ctx.display_fps = 0.0f;
   ctx.display_total_frames = 0;
   ctx.display_fps_updated_time = 0;
+
+  return 0; // TODO
 
   redraw(&ctx, nullptr, 0);
 
