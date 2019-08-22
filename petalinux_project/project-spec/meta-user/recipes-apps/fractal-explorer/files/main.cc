@@ -535,7 +535,7 @@ static std::uint32_t next_gbm_fb_id(int drm_fd, ::gbm_bo* bo) {
   const std::uint32_t offsets[4] = {};
 
   std::uint32_t fb_id{};
-  if (::drmModeAddFB2(drm_fd, width, height, DRM_FORMAT_ABGR8888, handles, strides, offsets, &fb_id,
+  if (::drmModeAddFB2(drm_fd, width, height, DRM_FORMAT_ARGB8888, handles, strides, offsets, &fb_id,
                       0)) {
     throw std::runtime_error{"drmModeAddFB2: "s + std::strerror(errno)};
   }
