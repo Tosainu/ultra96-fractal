@@ -132,7 +132,7 @@ struct window_context {
 
   float display_fps;
   std::uint64_t display_total_frames;
-  std::uint32_t display_fps_updated_time;
+  std::uint64_t display_fps_updated_time;
 
   bool running;
   int epoll_fd;
@@ -667,13 +667,8 @@ static void redraw_overlay_surface(::window_context* ctx) {
   ::cairo_destroy(cr);
 }
 
-static void redraw(void* data, std::uint32_t time) {
+static void redraw(void* data) {
   auto ctx = static_cast<::window_context*>(data);
-
-  if (++ctx->display_total_frames % 5 == 0) {
-    ctx->display_fps = 5'000.0f / (time - ctx->display_fps_updated_time);
-    ctx->display_fps_updated_time = time;
-  }
 
   redraw_main_surface(ctx);
   redraw_overlay_surface(ctx);
@@ -694,7 +689,13 @@ static void drm_page_flip_handler(int fd, unsigned int frame, unsigned int sec, 
     ctx->gbm_bo_next = nullptr;
   }
 
-  redraw(ctx, 0);
+  if (++ctx->display_total_frames % 5 == 0) {
+    const auto time = static_cast<std::uint64_t>(sec) * 1'000'000 + usec;
+    ctx->display_fps = 5'000'000.0f / (time - ctx->display_fps_updated_time);
+    ctx->display_fps_updated_time = time;
+  }
+
+  redraw(ctx);
 
   ctx->gbm_bo_next = ::gbm_surface_lock_front_buffer(ctx->gbm_surface);
   ctx->fb_id_next = next_gbm_fb_id(ctx->drm_fd, ctx->gbm_bo_next);
@@ -1189,7 +1190,7 @@ auto main() -> int {
   }
 
   {
-    redraw(&ctx, 0);
+    redraw(&ctx);
 
     ctx.gbm_bo_next = ::gbm_surface_lock_front_buffer(ctx.gbm_surface);
     ctx.fb_id_next = next_gbm_fb_id(ctx.drm_fd, ctx.gbm_bo_next);
