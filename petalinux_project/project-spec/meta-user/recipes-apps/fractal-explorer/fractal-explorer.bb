@@ -9,15 +9,16 @@ LIC_FILES_CHKSUM = "file://${COMMON_LICENSE_DIR}/MIT;md5=0835ade698e0bcf8506ecda
 
 SRC_URI = "file://main.cc \
            file://Makefile \
+           file://init \
           "
 
 S = "${WORKDIR}"
 
-inherit pkgconfig
+inherit pkgconfig update-rc.d
 
-DEPENDS = " \
-          cairo \
-          virtual/egl \
+DEPENDS = "cairo \
+           libdrm \
+           virtual/egl \
           "
 
 do_compile() {
@@ -27,4 +28,9 @@ do_compile() {
 do_install() {
 	     install -d ${D}${bindir}
 	     install -m 0755 fractal-explorer ${D}${bindir}
+
+	     install -Dm755 ${WORKDIR}/init ${D}/${sysconfdir}/init.d/fractal-explorer
 }
+
+INITSCRIPT_NAME = "fractal-explorer"
+INITSCRIPT_PARAMS = "start 99 5 2 . stop 20 0 1 6 ."
