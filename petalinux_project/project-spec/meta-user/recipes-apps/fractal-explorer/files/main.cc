@@ -20,7 +20,10 @@
 #include <GLES2/gl2.h>
 #include <GLES2/gl2ext.h>
 
-#include <libdrm/drm_fourcc.h>
+#include <drm_fourcc.h>
+#include <gbm.h>
+#include <xf86drm.h>
+#include <xf86drmMode.h>
 
 #include <cairo.h>
 #include <cairo-gl.h>
@@ -80,6 +83,11 @@ class fractal_controller;
 struct window_context {
   int width;
   int height;
+
+  int drm_fd;
+  std::uint32_t crtc_id;
+  std::uint32_t connector_id;
+  ::drmModeModeInfo display_mode;
 
   ::wl_display* display;
   ::wl_compositor* compositor;
@@ -401,6 +409,59 @@ public:
 
 #undef FRACTAL_CONTROLLER_GETTER_SETTER
 };
+
+std::tuple<std::uint32_t, std::uint32_t, ::drmModeModeInfo> init_drm(int fd) {
+  auto resources = ::drmModeGetResources(fd);
+  if (!resources) {
+    throw std::runtime_error{"drmModeGetResources: "s + std::strerror(errno)};
+  }
+
+  ::drmModeConnector* connector{};
+  for (int i = 0; i < resources->count_connectors; ++i) {
+    connector = ::drmModeGetConnector(fd, resources->connectors[i]);
+    if (!connector) continue;
+    if (connector->connection == DRM_MODE_CONNECTED && connector->count_modes > 0) break;
+    ::drmModeFreeConnector(connector);
+    connector = nullptr;
+  }
+  if (!connector) {
+    throw std::runtime_error{"connected connector not found"};
+  }
+
+  std::uint32_t crtc_id{};
+  if (connector->encoder_id) {
+    auto e = ::drmModeGetEncoder(fd, connector->encoder_id);
+    crtc_id = e->crtc_id;
+    ::drmModeFreeEncoder(e);
+  } else {
+    bool crtc_found = false;
+
+    for (int i = 0; i < resources->count_encoders; ++i) {
+      auto e = ::drmModeGetEncoder(fd, resources->encoders[i]);
+      if (!e) continue;
+      for (int j = 0; j < resources->count_crtcs; ++j) {
+        if (e->possible_crtcs & (1 << j)) {
+          crtc_found = true;
+          crtc_id = resources->crtcs[j];
+          break;
+        }
+      }
+      ::drmModeFreeEncoder(e);
+      if (crtc_found) break;
+    }
+
+    if (!crtc_found) {
+      throw std::runtime_error{"crtc not found"};
+    }
+  }
+
+  auto mode = connector->modes[0];
+  std::uint32_t connector_id = connector->connector_id;
+
+  ::drmModeFreeConnector(connector);
+
+  return std::make_tuple(crtc_id, connector_id, mode);
+}
 
 std::tuple<::EGLDisplay, ::EGLConfig, ::EGLContext> init_egl(::wl_display* native_display) {
   // clang-format off
@@ -986,6 +1047,11 @@ auto main() -> int {
         perror_exit("VIDIOC_QBUF");
       }
     }
+  }
+
+  ctx.drm_fd = ::open("/dev/dri/card0", O_RDWR);
+  if (ctx.drm_fd < 0) {
+    perror_exit("open");
   }
 
   ctx.display = ::wl_display_connect(nullptr);
