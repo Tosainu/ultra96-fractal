@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cmath>
 #include <cstdint>
 #include <cstring>
 #include <iomanip>
@@ -11,9 +12,6 @@
 #include <string_view>
 #include <thread>
 #include <vector>
-
-#include <wayland-client.h>
-#include <wayland-egl.h>
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -96,21 +94,11 @@ struct window_context {
   std::uint32_t fb_id;
   std::uint32_t fb_id_next;
 
-  ::wl_display* display;
-  ::wl_compositor* compositor;
-  ::wl_subcompositor* subcompositor;
-  ::wl_shell* shell;
-  ::wl_shell_surface* shell_surface;
-  ::wl_callback* redraw_cb;
-
   ::EGLDisplay egl_display;
   ::EGLConfig egl_config;
   ::EGLContext egl_context;
 
   struct surface {
-    ::wl_surface* surface;
-    ::wl_subsurface* subsurface;
-    ::wl_egl_window* egl_window;
     ::EGLSurface egl_surface;
 
     ::cairo_surface_t* cairo_surface;
@@ -527,7 +515,6 @@ window_context::surface make_surface(
     ::gbm_surface* gbm_surface,
     std::tuple<const ::EGLDisplay&, const ::EGLConfig&, const ::EGLContext&> egl) {
   window_context::surface surface;
-  surface.subsurface = nullptr;
   surface.cairo_surface = nullptr;
 
   const auto& [display, config, context] = egl;
@@ -680,18 +667,8 @@ static void redraw_overlay_surface(::window_context* ctx) {
   ::cairo_destroy(cr);
 }
 
-static void redraw(void* data, ::wl_callback* callback, std::uint32_t time);
-
-static const ::wl_callback_listener redraw_listener = {
-    redraw,
-};
-
-static void redraw(void* data, ::wl_callback* callback, std::uint32_t time) {
+static void redraw(void* data, std::uint32_t time) {
   auto ctx = static_cast<::window_context*>(data);
-
-  if (callback) {
-    ::wl_callback_destroy(callback);
-  }
 
   if (++ctx->display_total_frames % 5 == 0) {
     ctx->display_fps = 5'000.0f / (time - ctx->display_fps_updated_time);
@@ -717,7 +694,7 @@ static void drm_page_flip_handler(int fd, unsigned int frame, unsigned int sec, 
     ctx->gbm_bo_next = nullptr;
   }
 
-  redraw(ctx, nullptr, 0);
+  redraw(ctx, 0);
 
   ctx->gbm_bo_next = ::gbm_surface_lock_front_buffer(ctx->gbm_surface);
   ctx->fb_id_next = next_gbm_fb_id(ctx->drm_fd, ctx->gbm_bo_next);
@@ -1212,7 +1189,7 @@ auto main() -> int {
   }
 
   {
-    redraw(&ctx, nullptr, 0);
+    redraw(&ctx, 0);
 
     ctx.gbm_bo_next = ::gbm_surface_lock_front_buffer(ctx.gbm_surface);
     ctx.fb_id_next = next_gbm_fb_id(ctx.drm_fd, ctx.gbm_bo_next);
