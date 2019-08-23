@@ -52,7 +52,7 @@ xpm_memory_sprom #(
   .MEMORY_SIZE(6144),   // 24 * 256 [bits]
   .MESSAGE_CONTROL(0),
   .READ_DATA_WIDTH_A(24),
-  .READ_LATENCY_A(0),
+  .READ_LATENCY_A(1),
   .READ_RESET_VALUE_A("0"),
   .RST_MODE_A("SYNC"),
   .SIM_ASSERT_CHK(1),
