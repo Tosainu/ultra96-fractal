@@ -97,13 +97,7 @@ struct window_context {
   ::EGLDisplay egl_display;
   ::EGLConfig egl_config;
   ::EGLContext egl_context;
-
-  struct surface {
-    ::EGLSurface egl_surface;
-
-    ::cairo_surface_t* cairo_surface;
-  };
-  surface main_surface;
+  ::EGLSurface egl_surface;
 
   struct {
     ::GLuint program;
@@ -114,6 +108,7 @@ struct window_context {
   } texture;
 
   ::cairo_device_t* cairo_device;
+  ::cairo_surface_t* cairo_surface;
 
   int video_fd;
   struct buffer_context {
@@ -512,27 +507,11 @@ std::tuple<::EGLDisplay, ::EGLConfig, ::EGLContext> init_egl(::gbm_device* gbm) 
   return init_egl(display);
 }
 
-window_context::surface make_surface(
-    ::gbm_surface* gbm_surface,
-    std::tuple<const ::EGLDisplay&, const ::EGLConfig&, const ::EGLContext&> egl) {
-  window_context::surface surface;
-  surface.cairo_surface = nullptr;
-
-  const auto& [display, config, context] = egl;
-  surface.egl_surface = ::eglCreateWindowSurface(
-      display, config, reinterpret_cast<::EGLNativeWindowType>(gbm_surface), nullptr);
-  if (surface.egl_surface == EGL_NO_SURFACE) {
-    throw std::runtime_error{"failed to create egl surface"};
-  }
-
-  return surface;
-}
-
-static std::uint32_t next_gbm_fb_id(int drm_fd, ::gbm_bo* bo) {
-  const auto width = gbm_bo_get_width(bo);
-  const auto height = gbm_bo_get_height(bo);
-  const std::uint32_t handles[4] = {gbm_bo_get_handle(bo).u32};
-  const std::uint32_t strides[4] = {gbm_bo_get_stride(bo)};
+static std::uint32_t get_gbm_bo_fb_id(int drm_fd, ::gbm_bo* bo) {
+  const auto width = ::gbm_bo_get_width(bo);
+  const auto height = ::gbm_bo_get_height(bo);
+  const std::uint32_t handles[4] = {::gbm_bo_get_handle(bo).u32};
+  const std::uint32_t strides[4] = {::gbm_bo_get_stride(bo)};
   const std::uint32_t offsets[4] = {};
 
   std::uint32_t fb_id{};
@@ -545,9 +524,8 @@ static std::uint32_t next_gbm_fb_id(int drm_fd, ::gbm_bo* bo) {
 }
 
 static void redraw_main_surface(::window_context* ctx) {
-  if (!::eglMakeCurrent(ctx->egl_display, ctx->main_surface.egl_surface,
-                        ctx->main_surface.egl_surface, ctx->egl_context)) {
-    std::cerr << "eglMakeCurrent(main_surface) failed" << std::endl;
+  if (!::eglMakeCurrent(ctx->egl_display, ctx->egl_surface, ctx->egl_surface, ctx->egl_context)) {
+    std::cerr << "eglMakeCurrent failed" << std::endl;
     return;
   }
 
@@ -599,31 +577,29 @@ static void redraw_main_surface(::window_context* ctx) {
 }
 
 static void flush_main_surface(::window_context* ctx) {
-  if (!::eglMakeCurrent(ctx->egl_display, ctx->main_surface.egl_surface,
-                        ctx->main_surface.egl_surface, ctx->egl_context)) {
-    std::cerr << "eglMakeCurrent(main_surface) failed" << std::endl;
+  if (!::eglMakeCurrent(ctx->egl_display, ctx->egl_surface, ctx->egl_surface, ctx->egl_context)) {
+    std::cerr << "eglMakeCurrent failed" << std::endl;
     return;
   }
 
-  ::cairo_gl_surface_swapbuffers(ctx->main_surface.cairo_surface);
+  ::cairo_gl_surface_swapbuffers(ctx->cairo_surface);
   ::glBindTexture(GL_TEXTURE_EXTERNAL_OES, 0);
 }
 
 static void redraw_overlay_surface(::window_context* ctx) {
-  if (!::eglMakeCurrent(ctx->egl_display, ctx->main_surface.egl_surface,
-                        ctx->main_surface.egl_surface, ctx->egl_context)) {
-    std::cerr << "eglMakeCurrent(main_surface) failed" << std::endl;
+  if (!::eglMakeCurrent(ctx->egl_display, ctx->egl_surface, ctx->egl_surface, ctx->egl_context)) {
+    std::cerr << "eglMakeCurrent failed" << std::endl;
     return;
   }
 
   const auto width = ctx->width;
   const auto height = ctx->height;
 
-  if (!ctx->main_surface.cairo_surface) {
-    ctx->main_surface.cairo_surface = ::cairo_gl_surface_create_for_egl(
-        ctx->cairo_device, ctx->main_surface.egl_surface, width, height);
+  if (!ctx->cairo_surface) {
+    ctx->cairo_surface =
+        ::cairo_gl_surface_create_for_egl(ctx->cairo_device, ctx->egl_surface, width, height);
   }
-  auto cr = ::cairo_create(ctx->main_surface.cairo_surface);
+  auto cr = ::cairo_create(ctx->cairo_surface);
 
   ::cairo_set_source_rgba(cr, 0.125, 0.125, 0.125, 0.75);
   ::cairo_rectangle(cr, 31.5, 63.5, 497, 149);
@@ -699,7 +675,7 @@ static void drm_page_flip_handler(int fd, unsigned int frame, unsigned int sec, 
   redraw(ctx);
 
   ctx->gbm_bo_next = ::gbm_surface_lock_front_buffer(ctx->gbm_surface);
-  ctx->fb_id_next = next_gbm_fb_id(ctx->drm_fd, ctx->gbm_bo_next);
+  ctx->fb_id_next = get_gbm_bo_fb_id(ctx->drm_fd, ctx->gbm_bo_next);
 
   if (::drmModePageFlip(ctx->drm_fd, ctx->crtc_id, ctx->fb_id_next, DRM_MODE_PAGE_FLIP_EVENT,
                         ctx)) {
@@ -1027,11 +1003,15 @@ auto main() -> int {
 
   std::tie(ctx.egl_display, ctx.egl_config, ctx.egl_context) = init_egl(ctx.gbm_device);
 
-  ctx.main_surface =
-      make_surface(ctx.gbm_surface, std::tie(ctx.egl_display, ctx.egl_config, ctx.egl_context));
+  ctx.egl_surface =
+      ::eglCreateWindowSurface(ctx.egl_display, ctx.egl_config,
+                               reinterpret_cast<::EGLNativeWindowType>(ctx.gbm_surface), nullptr);
+  if (ctx.egl_surface == EGL_NO_SURFACE) {
+    std::cerr << "failed to create egl surface" << std::endl;
+    return -1;
+  }
 
-  if (!::eglMakeCurrent(ctx.egl_display, ctx.main_surface.egl_surface, ctx.main_surface.egl_surface,
-                        ctx.egl_context)) {
+  if (!::eglMakeCurrent(ctx.egl_display, ctx.egl_surface, ctx.egl_surface, ctx.egl_context)) {
     return -1;
   }
 
@@ -1103,6 +1083,7 @@ auto main() -> int {
     std::cerr << "failed to create cairo egl device" << std::endl;
     return -1;
   }
+  ctx.cairo_surface = nullptr;
 
   ctx.epoll_fd = ::epoll_create1(EPOLL_CLOEXEC);
   if (ctx.epoll_fd < 0) {
@@ -1180,10 +1161,10 @@ auto main() -> int {
   {
     ::glClearColor(0.0, 0.0, 0.0, 1.0);
     ::glClear(GL_COLOR_BUFFER_BIT);
-    ::eglSwapBuffers(ctx.egl_display, ctx.main_surface.egl_surface);
+    ::eglSwapBuffers(ctx.egl_display, ctx.egl_surface);
 
     ctx.gbm_bo = ::gbm_surface_lock_front_buffer(ctx.gbm_surface);
-    ctx.fb_id = next_gbm_fb_id(ctx.drm_fd, ctx.gbm_bo);
+    ctx.fb_id = get_gbm_bo_fb_id(ctx.drm_fd, ctx.gbm_bo);
 
     if (::drmModeSetCrtc(ctx.drm_fd, ctx.crtc_id, ctx.fb_id, 0, 0, &ctx.connector_id, 1,
                          &ctx.display_mode)) {
@@ -1203,7 +1184,7 @@ auto main() -> int {
     redraw(&ctx);
 
     ctx.gbm_bo_next = ::gbm_surface_lock_front_buffer(ctx.gbm_surface);
-    ctx.fb_id_next = next_gbm_fb_id(ctx.drm_fd, ctx.gbm_bo_next);
+    ctx.fb_id_next = get_gbm_bo_fb_id(ctx.drm_fd, ctx.gbm_bo_next);
 
     if (::drmModePageFlip(ctx.drm_fd, ctx.crtc_id, ctx.fb_id_next, DRM_MODE_PAGE_FLIP_EVENT,
                           &ctx)) {
