@@ -1,5 +1,7 @@
 module fractal #(
   parameter integer NUM_PARALLELS = 24,
+  parameter integer OUTPUT_WIDTH = 1920,
+  parameter integer OUTPUT_HEIGHT = 1080,
 
   localparam integer S_AXI_DATA_WIDTH = 32,
   localparam integer S_AXI_ADDR_WIDTH = 6,
@@ -87,8 +89,8 @@ fractal_generator #(
 ) generator(
   .clk(aclk),
   .resetn(generator_resetn),
-  .width(16'd1920),  // TODO:
-  .height(16'd1080), // TODO:
+  .width(OUTPUT_WIDTH),
+  .height(OUTPUT_HEIGHT),
   .cr(generator_cr),
   .ci(generator_ci),
   .dx(generator_dx),
