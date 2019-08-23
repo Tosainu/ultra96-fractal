@@ -884,6 +884,13 @@ static void handle_joystick_events(window_context* ctx, std::uint32_t events) {
           ctx->fractal_ctl->set_mode(next_mode(ctx->fractal_ctl->mode()));
         }
 
+        if (jse.number == 8 && jse.value) {
+          ctx->app.scale = 1.0;
+          ctx->app.scale_q = 1.0;
+          ctx->app.offset_x = 0.0;
+          ctx->app.offset_y = 0.0;
+        }
+
         if (jse.number == 9 && jse.value) {
           ctx->app.animation = !ctx->app.animation;
           ctx->app.animation_frame = 0;
