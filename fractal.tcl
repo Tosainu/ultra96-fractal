@@ -282,6 +282,37 @@ set_property -name "top" -value "fractal_colorizer_tb" -objects $obj
 set_property -name "top_auto_set" -value "0" -objects $obj
 set_property -name "top_lib" -value "xil_defaultlib" -objects $obj
 
+# Create 'fractal_all' fileset (if not found)
+if {[string equal [get_filesets -quiet fractal_all] ""]} {
+  create_fileset -simset fractal_all
+}
+
+# Set 'fractal_all' fileset object
+set obj [get_filesets fractal_all]
+set files [list \
+ [file normalize "${origin_dir}/testbench/fractal_all/fractal_all_tb.sv"] \
+]
+add_files -norecurse -fileset $obj $files
+
+# Import local files from the original project
+# None
+
+# Set 'fractal_all' fileset file properties for remote files
+set file "$origin_dir/testbench/fractal_all/fractal_all_tb.sv"
+set file [file normalize $file]
+set file_obj [get_files -of_objects [get_filesets fractal_all] [list "*$file"]]
+set_property -name "file_type" -value "SystemVerilog" -objects $file_obj
+
+
+# Set 'fractal_all' fileset file properties for local files
+# None
+
+# Set 'fractal_all' fileset properties
+set obj [get_filesets fractal_all]
+set_property -name "top" -value "fractal_all_tb" -objects $obj
+set_property -name "top_auto_set" -value "0" -objects $obj
+set_property -name "top_lib" -value "xil_defaultlib" -objects $obj
+
 current_fileset -simset [ get_filesets fractal_generator ]
 
 # Set 'utils_1' fileset object
@@ -318,6 +349,18 @@ set_property REGISTERED_WITH_MANAGER "1" [get_files fractal_axi_bd.bd ]
 set wrapper [make_wrapper -files [get_files fractal_axi_bd.bd] -top]
 if { $wrapper eq "" } {
   puts "ERROR: Failed to generate fractal_axi_bd.bd wrapper files.\n"
+  return 1
+}
+add_files -norecurse -fileset $obj [list $wrapper]
+
+# Create BD fractal_all_bd
+source "$origin_dir/block_design/fractal_all_bd.tcl"
+set obj [get_filesets fractal_all]
+cr_bd_fractal_all_bd $obj
+set_property REGISTERED_WITH_MANAGER "1" [get_files fractal_all_bd.bd ]
+set wrapper [make_wrapper -files [get_files fractal_all_bd.bd] -top]
+if { $wrapper eq "" } {
+  puts "ERROR: Failed to generate fractal_all_bd.bd wrapper files.\n"
   return 1
 }
 add_files -norecurse -fileset $obj [list $wrapper]
