@@ -141,6 +141,7 @@ struct window_context {
   int joystick_fd;
 
   struct app_state {
+    bool animation;
     std::uint64_t animation_frame;
     double cr, ci, scale, scale_q, offset_x, offset_y;
   } app;
@@ -817,8 +818,6 @@ static void handle_timer_events(window_context* ctx, std::uint32_t events) {
 
     {
       constexpr auto ratio = 1080.0 / 1920.0;
-      const auto cr = app.cr;
-      const auto ci = app.ci;
       const auto scale_inv = 1.0 / app.scale;
       const auto x1 = 1.0 * scale_inv;
       const auto y1 = ratio * scale_inv;
@@ -830,26 +829,26 @@ static void handle_timer_events(window_context* ctx, std::uint32_t events) {
       const auto x0 = x1 - app.offset_x;
       const auto y0 = y1 + app.offset_y;
 
-      ctx->fractal_ctl->set_cr(cr);
-      ctx->fractal_ctl->set_ci(ci);
       ctx->fractal_ctl->set_x0(x0);
       ctx->fractal_ctl->set_y0(y0);
       ctx->fractal_ctl->set_dx(dx);
       ctx->fractal_ctl->set_dy(dy);
     }
 
-    /*
-    auto i = ctx->app.animation_frame + exp;
-    if (i >= 9000) i = 1000;
+    if (app.animation) {
+      const auto i = (app.animation_frame + exp) % 10000;
 
-    const auto t = (static_cast<double>(i) / 10000) * 6.28;
-    ctx->fractal_ctl->set_cr(0.7885 * std::cos(t));
-    ctx->fractal_ctl->set_ci(0.7885 * std::sin(t));
+      const auto t = (static_cast<double>(i) / 10000) * 6.28;
+      app.cr = 0.7885 * std::cos(t);
+      app.ci = 0.7885 * std::sin(t);
 
-    ctx->app.animation_frame = i;
-    */
-
-    return;
+      app.animation_frame = i;
+    } else {
+      app.cr = -0.4;
+      app.ci = 0.6;
+    }
+    ctx->fractal_ctl->set_cr(app.cr);
+    ctx->fractal_ctl->set_ci(app.ci);
   }
 }
 
@@ -883,6 +882,11 @@ static void handle_joystick_events(window_context* ctx, std::uint32_t events) {
         }
         if (jse.number == 5 && jse.value) {
           ctx->fractal_ctl->set_mode(next_mode(ctx->fractal_ctl->mode()));
+        }
+
+        if (jse.number == 9 && jse.value) {
+          ctx->app.animation = !ctx->app.animation;
+          ctx->app.animation_frame = 0;
         }
         break;
     }
@@ -1154,8 +1158,7 @@ auto main() -> int {
     ::epoll_ctl(ctx.epoll_fd, EPOLL_CTL_ADD, ctx.joystick_fd, &ep);
   }
 
-  ctx.app.cr = -0.4;
-  ctx.app.ci = 0.6;
+  ctx.app.animation = false;
   ctx.app.scale = 1.0;
   ctx.app.scale_q = 1.0;
   ctx.app.offset_x = 0.0;
