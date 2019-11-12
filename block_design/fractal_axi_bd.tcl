@@ -104,10 +104,7 @@ proc cr_bd_fractal_axi_bd { srcset {parentCell ""} } {
   # Create interface ports
 
   # Create ports
-  set aclk [ create_bd_port -dir I -type clk aclk ]
-  set_property -dict [ list \
-   CONFIG.FREQ_HZ {100000000} \
- ] $aclk
+  set aclk [ create_bd_port -dir I -type clk -freq_hz 100000000 aclk ]
   set aresetn [ create_bd_port -dir I -type rst aresetn ]
 
   # Create instance: axi_vip_0, and set properties
@@ -157,7 +154,7 @@ proc cr_bd_fractal_axi_bd { srcset {parentCell ""} } {
   connect_bd_net -net aresetn_1 [get_bd_ports aresetn] [get_bd_pins axi_vip_0/aresetn] [get_bd_pins fractal_axi_0/S_AXI_ARESETN]
 
   # Create address segments
-  create_bd_addr_seg -range 0x00010000 -offset 0x44A00000 [get_bd_addr_spaces axi_vip_0/Master_AXI] [get_bd_addr_segs fractal_axi_0/S_AXI/reg0] SEG_fractal_axi_0_reg0
+  assign_bd_address -offset 0x44A00000 -range 0x00010000 -target_address_space [get_bd_addr_spaces axi_vip_0/Master_AXI] [get_bd_addr_segs fractal_axi_0/S_AXI/reg0] -force
 
 
   # Restore current instance
