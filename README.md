@@ -18,8 +18,8 @@ Video: <https://twitter.com/myon___/status/1163835624710795264>
 
 Required Tools:
 
-- [Vivado Design Suite - HLx Editions][vivado] (2019.1)
-- [PetaLinux Tools][petalinux] (2019.1)
+- [Vivado Design Suite - HLx Editions][vivado] (2019.2)
+- [PetaLinux Tools][petalinux] (2019.2)
 
 1. Clone repository
 
@@ -32,15 +32,13 @@ Required Tools:
 
         Vivado% launch_runs impl_1 -to_step write_bitstream -jobs 32
         Vivado% wait_on_run impl_1
+        Vivado% write_hw_platform -fixed -include_bit vivado_project/system_wrapper.xsa
         Vivado% q
-
-        $ mkdir -p vivado_project/fractal.sdk
-        $ cp vivado_project/{fractal.runs/impl_1/system_wrapper.sysdef,fractal.sdk/system_wrapper.hdf}
 
 3. Build PetaLinux project
 
         $ cd petalinux_project
-        $ petalinux-config --get-hw-description=../vivado_project/fractal.sdk
+        $ petalinux-config --silentconfig --get-hw-description=../vivado_project
         $ petalinux-build
         $ petalinux-package --boot \
             --fsbl images/linux/zynqmp_fsbl.elf \
