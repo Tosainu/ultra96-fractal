@@ -1,33 +1,38 @@
 #!/bin/sh
-#
 ### BEGIN INIT INFO
-# Provides: fractal-explorer
+# Provides:       fractal-explorer
 # Required-Start: $local_fs $remote_fs
-# Required-Stop: $local_fs $remote_fs
-# Default-Start:     2 3 4 5
-# Default-Stop:      0 1 6
+# Required-Stop:  $local_fs $remote_fs
+# Default-Start:  2 3 4 5
+# Default-Stop:   0 1 6
 ### END INIT INFO
+
+cmd="/usr/bin/fractal-explorer"
 
 case "$1" in
   start)
-        . /etc/profile
-        fractal-explorer
-  ;;
+    if [ -z "$(/usr/bin/pidof $cmd)" ]; then
+      . /etc/profile
+      $cmd &
+    fi
+    ;;
 
   stop)
-        pid=`/bin/pidof $1`
-        [ "$pid" != "" ] && kill $pid
-  ;;
+    pid="$(/usr/bin/pidof $cmd)"
+    if [ -n "$pid" ]; then
+      kill "$pid"
+    fi
+    ;;
 
   restart)
-	$0 stop
-        sleep 1
-        $0 start
-  ;;
+    $0 stop
+    sleep 1
+    $0 start
+    ;;
 
   *)
-        echo "usage: $0 { start | stop | restart }"
-  ;;
+    echo "usage: $0 { start | stop | restart }"
+    ;;
 esac
 
 exit 0
