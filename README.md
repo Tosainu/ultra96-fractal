@@ -68,7 +68,7 @@ Distributed under the [MIT license](https://github.com/Tosainu/ultra96-fractal/b
 [ultra96]: https://www.96boards.org/product/ultra96/
 [picture]: https://github.com/Tosainu/ultra96-fractal/blob/master/images/IMG_20190827_143055-3.jpg
 [video]: https://github.com/Tosainu/ultra96-fractal/blob/master/images/IMG_20190827_143055-3.jpg
-[latest release]: https://github.com/Tosainu/ultra96-fractal/releases/tag/v0.1.1
+[latest release]: https://github.com/Tosainu/ultra96-fractal/releases/latest
 [f310]: https://www.logitechg.com/en-roeu/products/gamepads/f310-gamepad.html
 [vivado]: https://www.xilinx.com/products/design-tools/vivado.html
 [petalinux]: https://www.xilinx.com/products/design-tools/embedded-software/petalinux-sdk.html
