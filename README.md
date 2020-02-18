@@ -48,6 +48,8 @@ Required Tools:
 
 ## How it works
 
+![Block diagram][block diagram]
+
 :construction: TODO
 
 ## License
@@ -60,14 +62,15 @@ Distributed under the [MIT license](https://github.com/Tosainu/ultra96-fractal/b
 ## See also
 
 - Blog posts
-    - (Japanese) [Ultra96 で Julia set をぐりぐり動かせるやつを作った | Tosainu Lab](https://blog.myon.info/entry/2019/05/15/ultra96-julia-set-explorer/)
+    - [Ultra96 で Julia set をぐりぐり動かせるやつを作った | Tosainu Lab](https://blog.myon.info/entry/2019/05/15/ultra96-julia-set-explorer/)
+    - [Ultra96 で Julia set をぐりぐり動かせるやつをもう少し強くした | Tosainu Lab](https://blog.myon.info/entry/2019/05/15/ultra96-julia-set-explorer/)
 - Slides
-    - (Japanese) [FPGA/CPU混載型SoCを用いたソフト・ハード協調システムの開発事例](https://l.myon.info/reconf-1905/) (May 10th, 2019 @ [RECONF](https://www.ieice.org/ken/program/index.php?tgs_regid=d5bf7fa40ee2a058a5b70087cf04a30745112da894892ad0e7f2fe4f459be8c4&tgid=IEICE-RECONF))
+    - [Julia set explorer を支える技術 -dma-buf によるデバイスドライバ間のバッファ共有-](https://l.myon.info/kernelvm-kansai-10) (Feb. 8th, 2020 - [カーネル/VM探検隊@関西 10回目](https://connpass.com/event/161201/))
 
 [julia set]: https://en.wikipedia.org/wiki/Julia_set
 [ultra96]: https://www.96boards.org/product/ultra96/
 [picture]: https://github.com/Tosainu/ultra96-fractal/blob/master/images/IMG_20190827_143055-3.jpg
-[video]: https://github.com/Tosainu/ultra96-fractal/blob/master/images/IMG_20190827_143055-3.jpg
+[block diagram]: https://github.com/Tosainu/ultra96-fractal/blob/master/images/block.svg
 [latest release]: https://github.com/Tosainu/ultra96-fractal/releases/latest
 [f310]: https://www.logitechg.com/en-roeu/products/gamepads/f310-gamepad.html
 [vivado]: https://www.xilinx.com/products/design-tools/vivado.html
