@@ -63,7 +63,7 @@ Distributed under the [MIT license](https://github.com/Tosainu/ultra96-fractal/b
 
 - Blog posts
     - [Ultra96 で Julia set をぐりぐり動かせるやつを作った | Tosainu Lab](https://blog.myon.info/entry/2019/05/15/ultra96-julia-set-explorer/)
-    - [Ultra96 で Julia set をぐりぐり動かせるやつをもう少し強くした | Tosainu Lab](https://blog.myon.info/entry/2019/05/15/ultra96-julia-set-explorer/)
+    - [Ultra96 で Julia set をぐりぐり動かせるやつをもう少し強くした | Tosainu Lab](https://blog.myon.info/entry/2019/08/29/ultra96-julia-set-explorer-2/)
 - Slides
     - [Julia set explorer を支える技術 -dma-buf によるデバイスドライバ間のバッファ共有-](https://l.myon.info/kernelvm-kansai-10) (Feb. 8th, 2020 - [カーネル/VM探検隊@関西 10回目](https://connpass.com/event/161201/))
 
