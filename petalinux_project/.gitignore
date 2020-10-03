@@ -13,3 +13,4 @@ project-spec/hw-description/*
 !project-spec/hw-description/metadata
 project-spec/meta-plnx-generated/
 /components/plnx_workspace
+/components/yocto

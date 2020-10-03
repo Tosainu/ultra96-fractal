@@ -155,6 +155,11 @@ CONFIG_system-zynqmp=y
 # CONFIG_formfactor-dev is not set
 
 #
+# fpga-manager-script 
+#
+# CONFIG_fpga-manager-script is not set
+
+#
 # haveged 
 #
 # CONFIG_haveged is not set
@@ -207,11 +212,11 @@ CONFIG_system-zynqmp=y
 # CONFIG_kmod-dev is not set
 
 #
-# lsbinitscripts 
+# linuxptp 
 #
-# CONFIG_lsbinitscripts is not set
-# CONFIG_lsbinitscripts-dev is not set
-# CONFIG_lsbinitscripts-dbg is not set
+# CONFIG_linuxptp is not set
+# CONFIG_linuxptp-dev is not set
+# CONFIG_linuxptp-dbg is not set
 
 #
 # modutils-initscripts 
@@ -443,6 +448,13 @@ CONFIG_mtd-utils=y
 # CONFIG_whetstone-dbg is not set
 
 #
+# bootgen 
+#
+# CONFIG_bootgen is not set
+# CONFIG_bootgen-dev is not set
+# CONFIG_bootgen-dbg is not set
+
+#
 # bootloader 
 #
 
@@ -468,6 +480,13 @@ CONFIG_mtd-utils=y
 # CONFIG_canutils is not set
 # CONFIG_canutils-dev is not set
 # CONFIG_canutils-dbg is not set
+
+#
+# can-utils 
+#
+# CONFIG_can-utils is not set
+# CONFIG_can-utils-dbg is not set
+# CONFIG_can-utils-dev is not set
 
 #
 # curl 
@@ -784,13 +803,6 @@ CONFIG_mtd-utils=y
 # CONFIG_lmbench-dev is not set
 
 #
-# lsb 
-#
-# CONFIG_lsb is not set
-# CONFIG_lsb-dev is not set
-# CONFIG_lsb-dbg is not set
-
-#
 # ltp 
 #
 # CONFIG_ltp is not set
@@ -964,7 +976,6 @@ CONFIG_pciutils=y
 # CONFIG_distcc is not set
 # CONFIG_distcc-dbg is not set
 # CONFIG_distcc-dev is not set
-# CONFIG_distcc-distmon-gnome is not set
 
 #
 # expect 
@@ -1059,7 +1070,6 @@ CONFIG_pciutils=y
 # perl 
 #
 # CONFIG_perl is not set
-# CONFIG_perl-lib is not set
 # CONFIG_perl-misc is not set
 # CONFIG_perl-modules is not set
 # CONFIG_perl-module-unicore is not set
@@ -1145,25 +1155,25 @@ CONFIG_pciutils=y
 # CONFIG_python-textutils is not set
 
 #
-# python-nose 
+# python3-nose 
 #
-# CONFIG_python-nose is not set
-# CONFIG_python-nose-dbg is not set
-# CONFIG_python-nose-dev is not set
+# CONFIG_python3-nose is not set
+# CONFIG_python3-nose-dbg is not set
+# CONFIG_python3-nose-dev is not set
 
 #
-# python-numpy 
+# python3-numpy 
 #
-# CONFIG_python-numpy is not set
-# CONFIG_python-numpy-dbg is not set
-# CONFIG_python-numpy-dev is not set
+# CONFIG_python3-numpy is not set
+# CONFIG_python3-numpy-dbg is not set
+# CONFIG_python3-numpy-dev is not set
 
 #
-# python-scons 
+# python3-scons 
 #
-# CONFIG_python-scons is not set
-# CONFIG_python-scons-dev is not set
-# CONFIG_python-scons-dbg is not set
+# CONFIG_python3-scons is not set
+# CONFIG_python3-scons-dev is not set
+# CONFIG_python3-scons-dbg is not set
 
 #
 # python3-dbus 
@@ -1347,11 +1357,8 @@ CONFIG_pciutils=y
 # faad2 
 #
 # CONFIG_faad2 is not set
-# CONFIG_libfaad is not set
-# CONFIG_libfaad-dev is not set
 # CONFIG_faad2-dev is not set
 # CONFIG_faad2-dbg is not set
-# CONFIG_libmp4ff-dev is not set
 
 #
 # ffmpeg 
@@ -1975,20 +1982,6 @@ CONFIG_pciutils=y
 # CONFIG_libxv-dev is not set
 
 #
-# libxxf86dga 
-#
-# CONFIG_libxxf86dga is not set
-# CONFIG_libxxf86dga-dbg is not set
-# CONFIG_libxxf86dga-dev is not set
-
-#
-# libxxf86misc 
-#
-# CONFIG_libxxf86misc is not set
-# CONFIG_libxxf86misc-dev is not set
-# CONFIG_libxxf86misc-dbg is not set
-
-#
 # libxxf86vm 
 #
 # CONFIG_libxxf86vm is not set
@@ -2239,6 +2232,21 @@ CONFIG_pciutils=y
 # CONFIG_zocl is not set
 # CONFIG_zocl-dev is not set
 # CONFIG_zocl-dbg is not set
+
+#
+# opencl-clhpp
+#
+# CONFIG_opencl-clhpp is not set
+
+#
+# opencl-headers
+#
+# CONFIG_opencl-headers is not set
+
+#
+# protobuf
+#
+# CONFIG_protobuf is not set
 
 #
 # zlib 
@@ -2493,23 +2501,6 @@ CONFIG_pciutils=y
 # gst-player 
 #
 # CONFIG_gst-player is not set
-
-#
-# gst-plugins-base 
-#
-# CONFIG_gst-plugins-base is not set
-# CONFIG_gst-plugins-base-meta is not set
-# CONFIG_gst-plugins-base-dbg is not set
-# CONFIG_gst-plugins-base-dev is not set
-# CONFIG_gst-plugins-base-apps is not set
-
-#
-# gst-plugins-good 
-#
-# CONFIG_gst-plugins-good is not set
-# CONFIG_gst-plugins-good-dev is not set
-# CONFIG_gst-plugins-good-dbg is not set
-# CONFIG_gst-plugins-good-meta is not set
 
 #
 # gstreamer1.0-meta-base 
@@ -3157,7 +3148,6 @@ CONFIG_packagegroup-core-boot=y
 # CONFIG_qttranslations-qtxmlpatterns is not set
 # CONFIG_qttranslations-qtquickcontrols is not set
 # CONFIG_qttranslations-designer is not set
-# CONFIG_qttranslations-qmlviewer is not set
 # CONFIG_qttranslations-qtquickcontrols2 is not set
 
 #
@@ -3531,13 +3521,6 @@ CONFIG_watchdog-init=y
 # CONFIG_xtrans-dbg is not set
 
 #
-# xvideo-tests 
-#
-# CONFIG_xvideo-tests is not set
-# CONFIG_xvideo-tests-dbg is not set
-# CONFIG_xvideo-tests-dev is not set
-
-#
 # xwininfo 
 #
 # CONFIG_xwininfo is not set
@@ -3570,13 +3553,6 @@ CONFIG_watchdog-init=y
 # CONFIG_alsa-plugins-dbg is not set
 # CONFIG_alsa-plugins-dev is not set
 # CONFIG_alsa-plugins-pulseaudio-conf is not set
-
-#
-# gstreamer 
-#
-# CONFIG_gstreamer is not set
-# CONFIG_gstreamer-dbg is not set
-# CONFIG_gstreamer-dev is not set
 
 #
 # gstreamer1.0 
@@ -4131,6 +4107,13 @@ CONFIG_liberation-fonts=y
 # CONFIG_packagegroup-petalinux-networking-stack-dev is not set
 
 #
+# packagegroup-petalinux-ocicontainers 
+#
+# CONFIG_packagegroup-petalinux-ocicontainers is not set
+# CONFIG_packagegroup-petalinux-ocicontainers-dev is not set
+# CONFIG_packagegroup-petalinux-ocicontainers-dbg is not set
+
+#
 # packagegroup-petalinux-openamp 
 #
 # CONFIG_packagegroup-petalinux-openamp is not set
@@ -4157,7 +4140,7 @@ CONFIG_liberation-fonts=y
 # CONFIG_packagegroup-petalinux-qt is not set
 # CONFIG_packagegroup-petalinux-qt-dev is not set
 # CONFIG_packagegroup-petalinux-qt-dbg is not set
-# CONFIG_inherit-populate-sdk-qt5 is not set
+# CONFIG_imageclass-populate-sdk-qt5 is not set
 
 #
 # packagegroup-petalinux-qt-extended 
@@ -4188,6 +4171,13 @@ CONFIG_packagegroup-petalinux-v4lutils=y
 # CONFIG_packagegroup-petalinux-v4lutils-dev is not set
 
 #
+# packagegroup-petalinux-vitisai 
+#
+# CONFIG_packagegroup-petalinux-vitisai is not set
+# CONFIG_packagegroup-petalinux-vitisai-dbg is not set
+# CONFIG_packagegroup-petalinux-vitisai-dev is not set
+
+#
 # packagegroup-petalinux-weston 
 #
 # CONFIG_packagegroup-petalinux-weston is not set
@@ -4209,6 +4199,13 @@ CONFIG_packagegroup-petalinux-v4lutils=y
 # CONFIG_packagegroup-petalinux-xen-dbg is not set
 
 #
+# packagegroup-petalinux-xrt 
+#
+# CONFIG_packagegroup-petalinux-xrt is not set
+# CONFIG_packagegroup-petalinux-xrt-dev is not set
+# CONFIG_packagegroup-petalinux-xrt-dbg is not set
+
+#
 # Image Features
 #
 # CONFIG_imagefeature-ssh-server-dropbear is not set
@@ -4216,6 +4213,7 @@ CONFIG_packagegroup-petalinux-v4lutils=y
 CONFIG_imagefeature-hwcodecs=y
 # CONFIG_imagefeature-package-management is not set
 # CONFIG_imagefeature-debug-tweaks is not set
+# CONFIG_auto-login is not set
 
 #
 # apps 
