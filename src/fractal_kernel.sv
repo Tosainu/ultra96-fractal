@@ -1,5 +1,5 @@
 module fractal_kernel #(
-  parameter integer PIPELINE_DEPTH = 8,
+  parameter integer PIPELINE_DEPTH = 9,
   parameter integer INPUT_DATA_WIDTH = 32
 ) (
   input         clk,
@@ -21,7 +21,7 @@ module fractal_kernel #(
   output        finished_out
 );
 
-localparam MUL_PIPELINE_DEPTH = PIPELINE_DEPTH - 1;
+localparam MUL_PIPELINE_DEPTH = PIPELINE_DEPTH - 2;
 localparam MUL_OUTPUT_DATA_WIDTH = INPUT_DATA_WIDTH * 2;
 
 localparam MAX_ITER = 255;
@@ -36,12 +36,10 @@ logic signed [MUL_OUTPUT_DATA_WIDTH - 1:0] zr2[0:MUL_PIPELINE_DEPTH - 1]; // Re(
 logic signed [MUL_OUTPUT_DATA_WIDTH - 1:0] zi2[0:MUL_PIPELINE_DEPTH - 1]; // Im(z) * Im(z)
 logic signed [MUL_OUTPUT_DATA_WIDTH - 1:0] zri[0:MUL_PIPELINE_DEPTH - 1]; // Re(z) * Im(z)
 
-// Re(z^2)
-wire signed [MUL_OUTPUT_DATA_WIDTH - 1:0] zz_r = zr2[MUL_PIPELINE_DEPTH - 1] - zi2[MUL_PIPELINE_DEPTH - 1];
-// Im(z^2)
-wire signed [MUL_OUTPUT_DATA_WIDTH - 1:0] zz_i = zri[MUL_PIPELINE_DEPTH - 1] + zri[MUL_PIPELINE_DEPTH - 1];
-// Re(z)^2 * Im(z)^2
-wire signed [MUL_OUTPUT_DATA_WIDTH - 1:0] z_sq = zr2[MUL_PIPELINE_DEPTH - 1] + zi2[MUL_PIPELINE_DEPTH - 1];
+logic signed [MUL_OUTPUT_DATA_WIDTH - 1:0] zz_r; // Re(z^2)
+logic signed [MUL_OUTPUT_DATA_WIDTH - 1:0] zz_i; // Im(z^2)
+logic signed [MUL_OUTPUT_DATA_WIDTH - 1:0] z_sq; // Re(z)^2 + Im(z)^2
+
 // Re(z^2 + c)
 wire signed [INPUT_DATA_WIDTH - 1:0] zz_c_r = zz_r[28+:32] + cr[PIPELINE_DEPTH - 1];
 // Im(z^2 + c)
@@ -84,6 +82,12 @@ always_ff @(posedge clk) begin
     iter[i] <= iter[i - 1];
     finished[i] <= finished[i - 1];
   end
+end
+
+always_ff @(posedge clk) begin
+  zz_r <= zr2[MUL_PIPELINE_DEPTH - 1] - zi2[MUL_PIPELINE_DEPTH - 1];
+  zz_i <= zri[MUL_PIPELINE_DEPTH - 1] + zri[MUL_PIPELINE_DEPTH - 1];
+  z_sq <= zr2[MUL_PIPELINE_DEPTH - 1] + zi2[MUL_PIPELINE_DEPTH - 1];
 end
 
 assign zr_out = zz_c_r;

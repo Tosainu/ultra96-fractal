@@ -18,7 +18,7 @@ module fractal_generator #(
 );
 
 localparam MAX_ITER = 255;
-localparam NUM_STAGES = 8;
+localparam NUM_STAGES = 9;
 localparam NUM_LOOPS = (MAX_ITER + NUM_PARALLELS - 1) / NUM_PARALLELS;
 
 const bit [NUM_STAGES - 1:0] state0_begin = 'b1;
