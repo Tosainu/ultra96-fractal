@@ -168,11 +168,16 @@ end
 wire signed [31:0] zr[NUM_PARALLELS - 1:0];
 wire signed [31:0] zi[NUM_PARALLELS - 1:0];
 
+wire signed [31:0] cr2[NUM_PARALLELS - 1:0];
+wire signed [31:0] ci2[NUM_PARALLELS - 1:0];
+
 wire [7:0] iter[NUM_PARALLELS - 1:0];
 wire       finished[NUM_PARALLELS - 1:0];
 
 logic signed [31:0] zr_u_0;
 logic signed [31:0] zi_u_0;
+logic signed [31:0] cr_u_0;
+logic signed [31:0] ci_u_0;
 logic         [7:0] iter_u_0;
 bit                 finished_u_0;
 bit                 inc_enabled_u_0;
@@ -181,6 +186,8 @@ always_comb begin
   if (state2[0]) begin
     zr_u_0 = z0_r;
     zi_u_0 = z0_i;
+    cr_u_0 = cr_i;
+    ci_u_0 = ci_i;
     iter_u_0 = 'h0;
     finished_u_0 = 'b0;
     inc_enabled_u_0 = 'b0;
@@ -188,6 +195,8 @@ always_comb begin
   else begin
     zr_u_0 = zr[NUM_PARALLELS - 1];
     zi_u_0 = zi[NUM_PARALLELS - 1];
+    cr_u_0 = cr2[NUM_PARALLELS - 1];
+    ci_u_0 = ci2[NUM_PARALLELS - 1];
     iter_u_0 = iter[NUM_PARALLELS - 1];
     finished_u_0 = finished[NUM_PARALLELS - 1];
     inc_enabled_u_0 = 'b1;
@@ -199,12 +208,14 @@ fractal_kernel u_0(
   .inc_enabled(inc_enabled_u_0),
   .zr_in(zr_u_0),
   .zi_in(zi_u_0),
-  .cr_in(cr_i),
-  .ci_in(ci_i),
+  .cr_in(cr_u_0),
+  .ci_in(ci_u_0),
   .iter_in(iter_u_0),
   .finished_in(finished_u_0),
   .zr_out(zr[0]),
   .zi_out(zi[0]),
+  .cr_out(cr2[0]),
+  .ci_out(ci2[0]),
   .iter_out(iter[0]),
   .finished_out(finished[0])
 );
@@ -215,12 +226,14 @@ for (genvar i = 1; i < NUM_PARALLELS; i++) begin
     .inc_enabled('b1),
     .zr_in(zr[i - 1]),
     .zi_in(zi[i - 1]),
-    .cr_in(cr_i),
-    .ci_in(ci_i),
+    .cr_in(cr2[i - 1]),
+    .ci_in(ci2[i - 1]),
     .iter_in(iter[i - 1]),
     .finished_in(finished[i - 1]),
     .zr_out(zr[i]),
     .zi_out(zi[i]),
+    .cr_out(cr2[i]),
+    .ci_out(ci2[i]),
     .iter_out(iter[i]),
     .finished_out(finished[i])
   );
