@@ -1,7 +1,6 @@
 module fractal_kernel #(
-  parameter integer MUL_PIPELINE_DEPTH = 7,
-  parameter integer INPUT_DATA_WIDTH = 32,
-  parameter integer INPUT_FRACTIONAL_WIDTH = 28
+  parameter integer PIPELINE_DEPTH = 8,
+  parameter integer INPUT_DATA_WIDTH = 32
 ) (
   input         clk,
 
@@ -22,10 +21,8 @@ module fractal_kernel #(
   output        finished_out
 );
 
-localparam PIPELINE_DEPTH = 1 + MUL_PIPELINE_DEPTH;
-
+localparam MUL_PIPELINE_DEPTH = PIPELINE_DEPTH - 1;
 localparam MUL_OUTPUT_DATA_WIDTH = INPUT_DATA_WIDTH * 2;
-localparam MUL_OUTPUT_FRACTIONAL_WIDTH = INPUT_FRACTIONAL_WIDTH * 2;
 
 localparam MAX_ITER = 255;
 

@@ -18,13 +18,11 @@ module fractal_generator #(
 );
 
 localparam MAX_ITER = 255;
-localparam NUM_PRE_STAGES = 0;
-localparam NUM_MULTIPLIER_STAGES = 7;
-localparam NUM_STAGES = 1 + NUM_MULTIPLIER_STAGES;
+localparam NUM_STAGES = 8;
 localparam NUM_LOOPS = (MAX_ITER + NUM_PARALLELS - 1) / NUM_PARALLELS;
 
 const bit [NUM_STAGES - 1:0] state0_begin = 'b1;
-const bit [NUM_STAGES - 1:0] state0_init = state0_begin << (NUM_STAGES - 1 - NUM_PRE_STAGES);
+const bit [NUM_STAGES - 1:0] state0_init = state0_begin << (NUM_STAGES - 1);
 const bit [NUM_STAGES - 1:0] state0_end = state0_begin << (NUM_STAGES - 1);
 bit       [NUM_STAGES - 1:0] state0 = state0_end;
 always_ff @(posedge clk) begin
@@ -203,7 +201,9 @@ always_comb begin
   end
 end
 
-fractal_kernel u_0(
+fractal_kernel #(
+  .PIPELINE_DEPTH(NUM_STAGES)
+) u_0(
   .clk(clk),
   .inc_enabled(inc_enabled_u_0),
   .zr_in(zr_u_0),
@@ -221,7 +221,9 @@ fractal_kernel u_0(
 );
 
 for (genvar i = 1; i < NUM_PARALLELS; i++) begin
-  fractal_kernel u_i(
+  fractal_kernel #(
+    .PIPELINE_DEPTH(NUM_STAGES)
+  ) u_i(
     .clk(clk),
     .inc_enabled('b1),
     .zr_in(zr[i - 1]),
