@@ -22,12 +22,11 @@ localparam NUM_STAGES = 9;
 localparam NUM_LOOPS = (MAX_ITER + NUM_PARALLELS - 1) / NUM_PARALLELS;
 
 const bit [NUM_STAGES - 1:0] state0_begin = 'b1;
-const bit [NUM_STAGES - 1:0] state0_init = state0_begin << (NUM_STAGES - 1);
 const bit [NUM_STAGES - 1:0] state0_end = state0_begin << (NUM_STAGES - 1);
 bit       [NUM_STAGES - 1:0] state0 = state0_end;
 always_ff @(posedge clk) begin
   if (~resetn)
-    state0 <= state0_init;
+    state0 <= state0_end;
   else begin
     if (state0[NUM_STAGES - 1])
       state0 <= state0_begin;
@@ -86,13 +85,13 @@ always_ff @(posedge clk) begin
   end
 end
 
-logic signed [15:0] width_i;
-logic signed [15:0] height_i;
+logic signed [15:0] width;
+logic signed [15:0] height;
 always_ff @(posedge clk) begin
   // changing width or height needs to reset.
   if (~resetn) begin
-    width_i <= width_in;
-    height_i <= height_in;
+    width <= width_in;
+    height <= height_in;
   end
 end
 
@@ -141,12 +140,12 @@ always_ff @(posedge clk) begin
   else begin
     if ((state2[NUM_LOOPS - 1] &&
          state1[NUM_PARALLELS - 1] &&
-         state0 >= state0_init) ||
+         state0[NUM_STAGES - 1]) ||
         (state2[0] &&
          !(state1[NUM_PARALLELS - 1] &&
-           state0 >= state0_init))) begin
-      if (x == -16'h1 || x == width_i - 1) begin
-        if (y == -16'h1 || y == height_i - 1) begin
+           state0[NUM_STAGES - 1]))) begin
+      if (x == -16'h1 || x == width - 1) begin
+        if (y == -16'h1 || y == height - 1) begin
           x <= 16'h00;
           y <= 16'h00;
           z0_r <= -x0_next;
@@ -177,8 +176,8 @@ end
 wire signed [31:0] zr[NUM_PARALLELS - 1:0];
 wire signed [31:0] zi[NUM_PARALLELS - 1:0];
 
-wire signed [31:0] cr2[NUM_PARALLELS - 1:0];
-wire signed [31:0] ci2[NUM_PARALLELS - 1:0];
+wire signed [31:0] cr[NUM_PARALLELS - 1:0];
+wire signed [31:0] ci[NUM_PARALLELS - 1:0];
 
 wire [7:0] iter[NUM_PARALLELS - 1:0];
 wire       finished[NUM_PARALLELS - 1:0];
@@ -204,8 +203,8 @@ always_comb begin
   else begin
     zr_u_0 = zr[NUM_PARALLELS - 1];
     zi_u_0 = zi[NUM_PARALLELS - 1];
-    cr_u_0 = cr2[NUM_PARALLELS - 1];
-    ci_u_0 = ci2[NUM_PARALLELS - 1];
+    cr_u_0 = cr[NUM_PARALLELS - 1];
+    ci_u_0 = ci[NUM_PARALLELS - 1];
     iter_u_0 = iter[NUM_PARALLELS - 1];
     finished_u_0 = finished[NUM_PARALLELS - 1];
     inc_enabled_u_0 = 'b1;
@@ -225,8 +224,8 @@ fractal_kernel #(
   .finished_in(finished_u_0),
   .zr_out(zr[0]),
   .zi_out(zi[0]),
-  .cr_out(cr2[0]),
-  .ci_out(ci2[0]),
+  .cr_out(cr[0]),
+  .ci_out(ci[0]),
   .iter_out(iter[0]),
   .finished_out(finished[0])
 );
@@ -239,14 +238,14 @@ for (genvar i = 1; i < NUM_PARALLELS; i++) begin
     .inc_enabled('b1),
     .zr_in(zr[i - 1]),
     .zi_in(zi[i - 1]),
-    .cr_in(cr2[i - 1]),
-    .ci_in(ci2[i - 1]),
+    .cr_in(cr[i - 1]),
+    .ci_in(ci[i - 1]),
     .iter_in(iter[i - 1]),
     .finished_in(finished[i - 1]),
     .zr_out(zr[i]),
     .zi_out(zi[i]),
-    .cr_out(cr2[i]),
-    .ci_out(ci2[i]),
+    .cr_out(cr[i]),
+    .ci_out(ci[i]),
     .iter_out(iter[i]),
     .finished_out(finished[i])
   );
@@ -263,9 +262,9 @@ always_ff @(posedge clk) begin
   end
   else begin
     if (data_enable) begin
-      if (out_x == width_i - 1) begin
+      if (out_x == width - 1) begin
         out_x <= 'b0;
-        if (out_y == height_i - 1)
+        if (out_y == height - 1)
           out_y <= 'b0;
         else
           out_y <= out_y + 1;
@@ -277,6 +276,6 @@ always_ff @(posedge clk) begin
 end
 
 assign frame_start = data_enable && out_x == 'b0 && out_y == 'b0;
-assign line_end = data_enable && out_x == width_i - 1;
+assign line_end = data_enable && out_x == width - 1;
 
 endmodule
