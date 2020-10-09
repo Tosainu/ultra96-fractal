@@ -86,11 +86,6 @@ always_ff @(posedge clk) begin
   end
 end
 
-logic signed [15:0] x;
-logic signed [15:0] y;
-logic signed [31:0] z0_r;
-logic signed [31:0] z0_i;
-
 logic signed [15:0] width_i;
 logic signed [15:0] height_i;
 always_ff @(posedge clk) begin
@@ -101,27 +96,33 @@ always_ff @(posedge clk) begin
   end
 end
 
-logic signed [31:0] dx_i;
-logic signed [31:0] dy_i;
-logic signed [31:0] x0_i;
-logic signed [31:0] y0_i;
+logic signed [31:0] cr_next;
+logic signed [31:0] ci_next;
+logic signed [31:0] dx_next;
+logic signed [31:0] dy_next;
+logic signed [31:0] x0_next;
+logic signed [31:0] y0_next;
+
 always_ff @(posedge clk) begin
-  if (~resetn || (x == 'b0 && y == 'b0)) begin
-    dx_i <= dx_in;
-    dy_i <= dy_in;
-    x0_i <= x0_in;
-    y0_i <= y0_in;
-  end
+  cr_next <= cr_in;
+  ci_next <= ci_in;
+  dx_next <= dx_in;
+  dy_next <= dy_in;
+  x0_next <= x0_in;
+  y0_next <= y0_in;
 end
 
-logic signed [31:0] cr_i;
-logic signed [31:0] ci_i;
-always_ff @(posedge clk) begin
-  if (~resetn || (x == 'b0 && y == 'b0)) begin
-    cr_i <= cr_in;
-    ci_i <= ci_in;
-  end
-end
+logic signed [15:0] x;
+logic signed [15:0] y;
+logic signed [31:0] z0_r;
+logic signed [31:0] z0_i;
+
+logic signed [31:0] cr_current;
+logic signed [31:0] ci_current;
+logic signed [31:0] dx_current;
+logic signed [31:0] dy_current;
+logic signed [31:0] x0_current;
+logic signed [31:0] y0_current;
 
 always_ff @(posedge clk) begin
   if (~resetn) begin
@@ -129,6 +130,13 @@ always_ff @(posedge clk) begin
     y <= -16'h1;
     z0_r <= 'h0;
     z0_i <= 'h0;
+
+    cr_current <= cr_in;
+    ci_current <= ci_in;
+    dx_current <= dx_in;
+    dy_current <= dy_in;
+    x0_current <= x0_in;
+    y0_current <= y0_in;
   end
   else begin
     if ((state2[NUM_LOOPS - 1] &&
@@ -138,27 +146,30 @@ always_ff @(posedge clk) begin
          !(state1[NUM_PARALLELS - 1] &&
            state0 >= state0_init))) begin
       if (x == -16'h1 || x == width_i - 1) begin
-        x <= 16'h00;
-        z0_r <= -x0_i;
         if (y == -16'h1 || y == height_i - 1) begin
+          x <= 16'h00;
           y <= 16'h00;
-          z0_i <= -y0_i;
+          z0_r <= -x0_next;
+          z0_i <= -y0_next;
+
+          cr_current <= cr_next;
+          ci_current <= ci_next;
+          dx_current <= dx_next;
+          dy_current <= dy_next;
+          x0_current <= x0_next;
+          y0_current <= y0_next;
         end
         else begin
+          x <= 16'h00;
           y <= y + 16'h01;
-          z0_i <= z0_i + dy_i;
+          z0_r <= -x0_current;
+          z0_i <= z0_i + dy_current;
         end
       end
       else begin
         x <= x + 16'h01;
-        z0_r <= z0_r + dx_i;
+        z0_r <= z0_r + dx_current;
       end
-    end
-    else begin
-      x <= x;
-      y <= y;
-      z0_r <= z0_r;
-      z0_i <= z0_i;
     end
   end
 end
@@ -184,8 +195,8 @@ always_comb begin
   if (state2[0]) begin
     zr_u_0 = z0_r;
     zi_u_0 = z0_i;
-    cr_u_0 = cr_i;
-    ci_u_0 = ci_i;
+    cr_u_0 = cr_current;
+    ci_u_0 = ci_current;
     iter_u_0 = 'h0;
     finished_u_0 = 'b0;
     inc_enabled_u_0 = 'b0;
