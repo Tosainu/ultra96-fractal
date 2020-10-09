@@ -3,14 +3,14 @@ module fractal_generator #(
 ) (
   input         clk,
   input         resetn,
-  input  [15:0] width,
-  input  [15:0] height,
-  input  [31:0] cr,
-  input  [31:0] ci,
-  input  [31:0] dx,
-  input  [31:0] dy,
-  input  [31:0] x0,
-  input  [31:0] y0,
+  input  [15:0] width_in,
+  input  [15:0] height_in,
+  input  [31:0] cr_in,
+  input  [31:0] ci_in,
+  input  [31:0] dx_in,
+  input  [31:0] dy_in,
+  input  [31:0] x0_in,
+  input  [31:0] y0_in,
   output  [7:0] data,         // tdata
   output        frame_start,  // tuser
   output        line_end,     // tlast
@@ -96,8 +96,8 @@ logic signed [15:0] height_i;
 always_ff @(posedge clk) begin
   // changing width or height needs to reset.
   if (~resetn) begin
-    width_i <= width;
-    height_i <= height;
+    width_i <= width_in;
+    height_i <= height_in;
   end
 end
 
@@ -107,10 +107,10 @@ logic signed [31:0] x0_i;
 logic signed [31:0] y0_i;
 always_ff @(posedge clk) begin
   if (~resetn || (x == 'b0 && y == 'b0)) begin
-    dx_i <= dx;
-    dy_i <= dy;
-    x0_i <= x0;
-    y0_i <= y0;
+    dx_i <= dx_in;
+    dy_i <= dy_in;
+    x0_i <= x0_in;
+    y0_i <= y0_in;
   end
 end
 
@@ -118,8 +118,8 @@ logic signed [31:0] cr_i;
 logic signed [31:0] ci_i;
 always_ff @(posedge clk) begin
   if (~resetn || (x == 'b0 && y == 'b0)) begin
-    cr_i <= cr;
-    ci_i <= ci;
+    cr_i <= cr_in;
+    ci_i <= ci_in;
   end
 end
 
