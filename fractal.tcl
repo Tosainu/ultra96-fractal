@@ -35,6 +35,14 @@ if { [info exists ::user_project_name] } {
 variable script_file
 set script_file "fractal.tcl"
 
+# ultra96v1
+set target_board "em.avnet.com:ultra96v1:part0:1.2"
+set target_part  "xczu3eg-sbva484-1-e"
+
+# ultra96v2
+# set target_board "em.avnet.com:ultra96v2:part0:1.0"
+# set target_part  "xczu3eg-sbva484-1-e"
+
 # Help information for this script
 proc print_help {} {
   variable script_file
@@ -84,7 +92,7 @@ if { $::argc > 0 } {
 set orig_proj_dir "[file normalize "$origin_dir/vivado_project"]"
 
 # Create project
-create_project ${_xil_proj_name_} $origin_dir/vivado_project -part xczu3eg-sbva484-1-e -force
+create_project ${_xil_proj_name_} $origin_dir/vivado_project -part $target_part -force
 
 # Set the directory path for the new project
 set proj_dir [get_property directory [current_project]]
@@ -92,14 +100,12 @@ set proj_dir [get_property directory [current_project]]
 # Set project properties
 set obj [current_project]
 set_property -name "board_part_repo_paths" -value "$origin_dir/third_party/avnet_bdfs" -objects $obj
-set_property -name "board_part" -value "em.avnet.com:ultra96v1:part0:1.2" -objects $obj
+set_property -name "board_part" -value $target_board -objects $obj
 set_property -name "default_lib" -value "xil_defaultlib" -objects $obj
 set_property -name "enable_vhdl_2008" -value "1" -objects $obj
 set_property -name "ip_cache_permissions" -value "read write" -objects $obj
 set_property -name "ip_output_repo" -value "$proj_dir/${_xil_proj_name_}.cache/ip" -objects $obj
 set_property -name "mem.enable_memory_map_generation" -value "1" -objects $obj
-set_property -name "platform.board_id" -value "ultra96v1" -objects $obj
-set_property -name "platform.description" -value "Vivado generated DSA" -objects $obj
 set_property -name "sim.central_dir" -value "$proj_dir/${_xil_proj_name_}.ip_user_files" -objects $obj
 set_property -name "sim.ip.auto_export_scripts" -value "1" -objects $obj
 set_property -name "simulator_language" -value "Mixed" -objects $obj
@@ -363,7 +369,7 @@ add_files -norecurse -fileset $obj [list $wrapper]
 
 # Create 'synth_1' run (if not found)
 if {[string equal [get_runs -quiet synth_1] ""]} {
-    create_run -name synth_1 -part xczu3eg-sbva484-1-e -flow {Vivado Synthesis 2020} -strategy "Vivado Synthesis Defaults" -report_strategy {No Reports} -constrset constrs_1
+    create_run -name synth_1 -part $target_part -flow {Vivado Synthesis 2020} -strategy "Vivado Synthesis Defaults" -report_strategy {No Reports} -constrset constrs_1
 } else {
   set_property strategy "Vivado Synthesis Defaults" [get_runs synth_1]
   set_property flow "Vivado Synthesis 2020" [get_runs synth_1]
@@ -388,7 +394,7 @@ current_run -synthesis [get_runs synth_1]
 
 # Create 'impl_1' run (if not found)
 if {[string equal [get_runs -quiet impl_1] ""]} {
-    create_run -name impl_1 -part xczu3eg-sbva484-1-e -flow {Vivado Implementation 2020} -strategy "Vivado Implementation Defaults" -report_strategy {No Reports} -constrset constrs_1 -parent_run synth_1
+    create_run -name impl_1 -part $target_part -flow {Vivado Implementation 2020} -strategy "Vivado Implementation Defaults" -report_strategy {No Reports} -constrset constrs_1 -parent_run synth_1
 } else {
   set_property strategy "Vivado Implementation Defaults" [get_runs impl_1]
   set_property flow "Vivado Implementation 2020" [get_runs impl_1]
