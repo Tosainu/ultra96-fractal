@@ -32,42 +32,41 @@ if { [info exists ::user_project_name] } {
   set _xil_proj_name_ $::user_project_name
 }
 
+set proj_dir "[file normalize "$origin_dir/vivado_project"]"
+
 variable script_file
 set script_file "fractal.tcl"
 
-# ultra96v1
-set target_board "em.avnet.com:ultra96v1:part0:1.2"
-set target_part  "xczu3eg-sbva484-1-e"
+set board_presets { \
+  ultra96v1 { \
+    target_board "em.avnet.com:ultra96v1:part0:1.2" \
+    target_part  "xczu3eg-sbva484-1-e" \
+  } \
+  ultra96v2 { \
+    target_board "em.avnet.com:ultra96v2:part0:1.0" \
+    target_part  "xczu3eg-sbva484-1-e" \
+  } \
+}
 
-# ultra96v2
-# set target_board "em.avnet.com:ultra96v2:part0:1.0"
-# set target_part  "xczu3eg-sbva484-1-e"
+set preset "ultra96v1"
 
 # Help information for this script
 proc print_help {} {
   variable script_file
-  puts "\nDescription:"
-  puts "Recreate a Vivado project from this script. The created project will be"
-  puts "functionally equivalent to the original project for which this script was"
-  puts "generated. The script contains commands for creating a project, filesets,"
-  puts "runs, adding/importing sources and setting properties on various objects.\n"
-  puts "Syntax:"
-  puts "$script_file"
-  puts "$script_file -tclargs \[--origin_dir <path>\]"
-  puts "$script_file -tclargs \[--project_name <name>\]"
-  puts "$script_file -tclargs \[--help\]\n"
+  puts ""
   puts "Usage:"
-  puts "Name                   Description"
-  puts "-------------------------------------------------------------------------"
-  puts "\[--origin_dir <path>\]  Determine source file paths wrt this path. Default"
-  puts "                       origin_dir path value is \".\", otherwise, the value"
-  puts "                       that was set with the \"-paths_relative_to\" switch"
-  puts "                       when this script was generated.\n"
-  puts "\[--project_name <name>\] Create project with the specified name. Default"
-  puts "                       name is the name of the project from where this"
-  puts "                       script was generated.\n"
-  puts "\[--help\]               Print help information for this script"
-  puts "-------------------------------------------------------------------------\n"
+  puts "  $script_file"
+  puts "  $script_file \[-tclargs OPTIONS...\]"
+  puts ""
+  puts "Options:"
+  puts "  --project_name <name>   Create a project with the specified name."
+  puts "                          Default: fractal"
+  puts "  --project_dir <dir>     Create a project to the specified directory path."
+  puts "                          Default: <directory of $script_file>/vivado_project"
+  puts "  --target <target>       Specify the target board (ultra96v1 or ultra96v2)."
+  puts "                          Default: ultra96v1"
+  puts "  --help                  Print help information for this script."
+  puts ""
   exit 0
 }
 
@@ -75,8 +74,9 @@ if { $::argc > 0 } {
   for {set i 0} {$i < $::argc} {incr i} {
     set option [string trim [lindex $::argv $i]]
     switch -regexp -- $option {
-      "--origin_dir"   { incr i; set origin_dir [lindex $::argv $i] }
       "--project_name" { incr i; set _xil_proj_name_ [lindex $::argv $i] }
+      "--project_dir"  { incr i; set proj_dir [lindex $::argv $i] }
+      "--target"       { incr i; set preset [lindex $::argv $i] }
       "--help"         { print_help }
       default {
         if { [regexp {^-} $option] } {
@@ -88,11 +88,11 @@ if { $::argc > 0 } {
   }
 }
 
-# Set the directory path for the original project from where this script was exported
-set orig_proj_dir "[file normalize "$origin_dir/vivado_project"]"
+set target_part [dict get [dict get $board_presets $preset] target_part]
+set target_board [dict get [dict get $board_presets $preset] target_board]
 
 # Create project
-create_project ${_xil_proj_name_} $origin_dir/vivado_project -part $target_part -force
+create_project ${_xil_proj_name_} $proj_dir -part $target_part -force
 
 # Set the directory path for the new project
 set proj_dir [get_property directory [current_project]]
