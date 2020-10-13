@@ -909,7 +909,7 @@ auto main() -> int {
     format.type = V4L2_BUF_TYPE_VIDEO_CAPTURE_MPLANE;
     format.fmt.pix_mp.width = ctx.width;
     format.fmt.pix_mp.height = ctx.height;
-    format.fmt.pix_mp.pixelformat = v4l2_fourcc('X', 'B', 'G', 'R');
+    format.fmt.pix_mp.pixelformat = V4L2_PIX_FMT_BGRX32;
     format.fmt.pix_mp.field = V4L2_FIELD_ANY;
     format.fmt.pix_mp.num_planes = 1;
     format.fmt.pix_mp.plane_fmt[0].bytesperline = 0;
