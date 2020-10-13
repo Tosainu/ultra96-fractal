@@ -11,14 +11,14 @@ cmd="/usr/bin/fractal-explorer"
 
 case "$1" in
   start)
-    if [ -z "$(/usr/bin/pidof $cmd)" ]; then
+    if [ -z "$(/bin/pidof $cmd)" ]; then
       . /etc/profile
       $cmd &
     fi
     ;;
 
   stop)
-    pid="$(/usr/bin/pidof $cmd)"
+    pid="$(/bin/pidof $cmd)"
     if [ -n "$pid" ]; then
       kill "$pid"
     fi
