@@ -237,24 +237,22 @@ public:
   }
 
   static std::int32_t double_to_fix(double v) {
-    union {
-      double d;
-      std::uint64_t u;
-      struct {
-        std::uint64_t frac : 52;
-        std::uint64_t exp : 11;
-        std::uint64_t sign : 1;
-      } s;
-    } df;
-    df.d = v;
-
-    if ((df.u & 0x7ffffffffffffffful) == 0) {
+    std::uint64_t u;
+    std::memcpy(&u, &v, sizeof v);
+    if ((u & 0x7ffffffffffffffful) == 0) {
       return 0;
     }
 
-    auto frac = static_cast<std::int64_t>(df.s.frac) | (1ul << 52);
-    auto exp = static_cast<int16_t>(df.s.exp) - 1023;
-    bool sign = df.s.sign;
+    struct {
+      std::uint64_t frac : 52;
+      std::uint64_t exp : 11;
+      std::uint64_t sign : 1;
+    } s;
+    std::memcpy(&s, &v, sizeof v);
+
+    auto frac = static_cast<std::int64_t>(s.frac) | (1ul << 52);
+    auto exp = static_cast<std::int16_t>(s.exp) - 1023;
+    bool sign = s.sign;
     if (sign) frac = -frac;
 
     int ap_w2 = 52 + 2;
@@ -269,7 +267,7 @@ public:
       if (shift < ap_w2) {
         return frac >> shift;
       } else {
-        return df.s.sign ? -1 : 0;
+        return s.sign ? -1 : 0;
       }
     } else {
       if (shift < static_cast<int>(value_width)) {
@@ -288,11 +286,11 @@ public:
     if (!value_) {
       return 0.0;
     }
-    return static_cast<double>(static_cast<int32_t>(value_)) / (1ul << fractional_width);
+    return static_cast<double>(static_cast<std::int32_t>(value_)) / (1ul << fractional_width);
   }
 
   inline std::int32_t integer() const {
-    return static_cast<int32_t>(value_) / (1ul << fractional_width);
+    return static_cast<std::int32_t>(value_) / (1ul << fractional_width);
   }
 
   template <std::size_t Digits>
