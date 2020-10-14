@@ -13,6 +13,11 @@ case "$1" in
   start)
     if [ -z "$(/bin/pidof $cmd)" ]; then
       . /etc/profile
+
+      if [ ! -f /dev/input/js0 ]; then
+        sleep 10
+      fi
+
       $cmd &
     fi
     ;;
