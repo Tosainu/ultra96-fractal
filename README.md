@@ -18,8 +18,8 @@ Video: <https://twitter.com/myon___/status/1163835624710795264>
 
 Required Tools:
 
-- [Vivado Design Suite - HLx Editions][vivado] (2019.2)
-- [PetaLinux Tools][petalinux] (2019.2)
+- [Vivado Design Suite - HLx Editions][vivado] (2020.1)
+- [PetaLinux Tools][petalinux] (2020.1)
 
 1. Clone repository
 
@@ -28,7 +28,10 @@ Required Tools:
 
 2. Import Vivado project and generate Bitstream
 
+        # ultra96v1
         $ vivado -mode tcl -source fractal.tcl
+        # ultra96v2
+        $ vivado -mode tcl -source fractal.tcl -tclargs --target ultra96v2
 
         Vivado% launch_runs impl_1 -to_step write_bitstream -jobs 32
         Vivado% wait_on_run impl_1
@@ -40,11 +43,11 @@ Required Tools:
         $ cd petalinux_project
         $ petalinux-config --silentconfig --get-hw-description=../vivado_project
         $ petalinux-build
-        $ petalinux-package --boot \
-            --fsbl images/linux/zynqmp_fsbl.elf \
-            --fpga project-spec/hw-description/system_wrapper.bit \
-            --pmufw images/linux/pmufw.elf \
-            --u-boot
+        $ petalinux-package --boot --fpga --u-boot
+
+4. Copy generated files to microSD card
+
+        $ cp image/linux/{BOOT.BIN,boot.scr,image.ub} /path/to/sd/card
 
 ## How it works
 
