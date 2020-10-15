@@ -232,17 +232,9 @@ public:
 
   explicit fix(std::uint32_t v) : value_{v} {};
 
-  explicit fix(double v) {
-    value_ = double_to_fix(v);
-  }
+  explicit fix(double v) : value_{double_to_fix(v)} {}
 
-  static std::int32_t double_to_fix(double v) {
-    std::uint64_t u;
-    std::memcpy(&u, &v, sizeof v);
-    if ((u & 0x7ffffffffffffffful) == 0) {
-      return 0;
-    }
-
+  static std::uint32_t double_to_fix(double v) {
     struct {
       std::uint64_t frac : 52;
       std::uint64_t exp : 11;
@@ -250,32 +242,24 @@ public:
     } s;
     std::memcpy(&s, &v, sizeof v);
 
-    auto frac = static_cast<std::int64_t>(s.frac) | (1ul << 52);
-    auto exp = static_cast<std::int16_t>(s.exp) - 1023;
-    bool sign = s.sign;
-    if (sign) frac = -frac;
+    const auto frac = static_cast<std::uint64_t>(s.frac) | (1ul << 52);
+    const auto exp = static_cast<std::int16_t>(s.exp) - 1023;
 
-    int ap_w2 = 52 + 2;
-    int ap_i2 = exp + 2;
-    constexpr int ap_f = static_cast<int>(fractional_width);
-    int f2 = ap_w2 - ap_i2;
-    int shift = f2 > ap_f ? f2 - ap_f : ap_f - f2;
-
-    if (f2 == ap_f) {
-      return frac;
-    } else if (f2 > ap_f) {
-      if (shift < ap_w2) {
-        return frac >> shift;
-      } else {
-        return s.sign ? -1 : 0;
-      }
+    std::size_t shift;
+    if (std::int32_t s = 52 - exp; static_cast<std::int32_t>(fractional_width) > s) {
+      shift = fractional_width - s;
     } else {
-      if (shift < static_cast<int>(value_width)) {
-        return frac << shift;
-      } else {
-        return 0;
-      }
+      shift = s - fractional_width;
     }
+
+    std::uint32_t ret;
+    if (shift >= 0) {
+      ret = frac >> shift;
+    } else {
+      ret = frac << -shift;
+    }
+
+    return s.sign ? -ret : ret;
   }
 
   inline std::uint32_t value() const {
