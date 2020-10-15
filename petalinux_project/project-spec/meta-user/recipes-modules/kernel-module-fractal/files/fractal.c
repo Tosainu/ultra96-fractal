@@ -12,6 +12,7 @@
 #include <linux/module.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
+#include <linux/uio_driver.h>
 #include <linux/xilinx-v4l2-controls.h>
 
 #include <media/v4l2-async.h>
@@ -35,6 +36,8 @@ struct fractal_device {
 	struct device *dev;
 	void __iomem *iomem;
 	struct clk *clk;
+
+	struct uio_info uio;
 
 	struct v4l2_subdev subdev;
 	struct v4l2_mbus_framefmt format;
@@ -241,6 +244,17 @@ static int fractal_probe(struct platform_device *dev)
 
 	clk_prepare_enable(fractal->clk);
 
+	fractal->uio.name = "fractal";
+	fractal->uio.version = "1.0";
+	fractal->uio.mem[0].name = "fractal_ctl";
+	fractal->uio.mem[0].addr = res->start;
+	fractal->uio.mem[0].size = resource_size(res);
+	fractal->uio.mem[0].memtype = UIO_MEM_PHYS;
+	fractal->uio.irq = UIO_IRQ_NONE;
+
+	if (uio_register_device(&dev->dev, &fractal->uio))
+		goto error;
+
 	fractal->pads[0].flags = MEDIA_PAD_FL_SOURCE;
 
 	fractal->format.code = MEDIA_BUS_FMT_RBG888_1X24;
@@ -289,6 +303,7 @@ static int fractal_remove(struct platform_device *dev)
 
 	v4l2_async_unregister_subdev(subdev);
 	media_entity_cleanup(&subdev->entity);
+	uio_unregister_device(&fractal->uio);
 	clk_disable_unprepare(fractal->clk);
 
 	dev_info(&dev->dev, "fractal_remove\n");

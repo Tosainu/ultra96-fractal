@@ -4,6 +4,8 @@
 #include <cmath>
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
 #include <memory>
@@ -326,11 +328,11 @@ class fractal_controller {
   std::uint32_t* reg_;
 
 public:
-  fractal_controller(std::uintptr_t base_addr)
+  fractal_controller(std::string_view device)
       : fd_{-1}, reg_{static_cast<std::uint32_t*>(MAP_FAILED)} {
-    fd_ = ::open("/dev/mem", O_RDWR | O_SYNC);
+    fd_ = ::open(device.data(), O_RDWR | O_SYNC);
     if (fd_ < 0) {
-      throw std::runtime_error{"failed to open /dev/mem: "s + std::strerror(errno)};
+      throw std::runtime_error{"failed to open "s + device.data() + ": "s + std::strerror(errno)};
     }
 
     const auto s = ::sysconf(_SC_PAGESIZE);
@@ -340,7 +342,7 @@ public:
     size_ = static_cast<std::size_t>(s);
 
     reg_ = static_cast<std::uint32_t*>(
-        ::mmap(nullptr, size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, base_addr));
+        ::mmap(nullptr, size_, PROT_READ | PROT_WRITE, MAP_SHARED, fd_, 0));
     if (reg_ == MAP_FAILED) {
       throw std::runtime_error{"mmap: "s + std::strerror(errno)};
     }
@@ -860,6 +862,24 @@ static void handle_joystick_events(window_context* ctx, std::uint32_t events) {
   }
 }
 
+static std::optional<std::string> find_fractal_uio_device() {
+  const auto uio_base = std::filesystem::path{"/sys/class/uio"};
+  const auto dev_base = std::filesystem::path{"/dev"};
+
+  for (int n = 0; n < 16; ++n) {
+    char uio_n[8];
+    std::snprintf(uio_n, sizeof uio_n, "uio%d", n);
+
+    auto ifs = std::ifstream(uio_base / uio_n / "name");
+    if (std::string(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>()) ==
+        "fractal\n") {
+      return dev_base / uio_n;
+    }
+  }
+
+  return std::nullopt;
+}
+
 auto main() -> int {
   window_context ctx{};
   ctx.width = 1920;
@@ -1134,7 +1154,13 @@ auto main() -> int {
   ctx.app.offset_x = 0.0;
   ctx.app.offset_y = 0.0;
 
-  ctx.fractal_ctl = std::make_unique<fractal_controller>(0xa0000000);
+  if (auto dev = find_fractal_uio_device()) {
+    std::cout << "fractal uio device: " << *dev << std::endl;
+    ctx.fractal_ctl = std::make_unique<fractal_controller>(*dev);
+  } else {
+    std::cerr << "failed to find fractal uio device" << std::endl;
+    return -1;
+  }
 
   ctx.display_fps = 0.0f;
   ctx.display_total_frames = 0;
