@@ -1,0 +1,28 @@
+From 0af8d7798cfd6941af3f47b8d92b05dd5ddde720 Mon Sep 17 00:00:00 2001
+From: Sandeep Gundlupet Raju <sandeep.gundlupet-raju@xilinx.com>
+Date: Wed, 15 Jul 2020 21:36:32 -0600
+Subject: [PATCH] Revert "tty: xilinx_uartps: Add the id to the console"
+
+This reverts commit 591b80eab3297061acf135b3f472d319763445f2.
+
+This patch hangs booting kernel on Ultra96V1/V2 boards where it uses UART1
+as serial0 i.e., setting stdout-path = "serial0:115200n8" in device-tree
+chosen node property
+
+Signed-off-by: Sandeep Gundlupet Raju <sandeep.gundlupet-raju@xilinx.com>
+---
+ drivers/tty/serial/xilinx_uartps.c | 1 -
+ 1 file changed, 1 deletion(-)
+
+diff --git a/drivers/tty/serial/xilinx_uartps.c b/drivers/tty/serial/xilinx_uartps.c
+index cacca3d3f9dd..8018828cf33e 100644
+--- a/drivers/tty/serial/xilinx_uartps.c
++++ b/drivers/tty/serial/xilinx_uartps.c
+@@ -1485,7 +1485,6 @@ static int cdns_uart_probe(struct platform_device *pdev)
+ 		cdns_uart_uart_driver.nr = CDNS_UART_NR_PORTS;
+ #ifdef CONFIG_SERIAL_XILINX_PS_UART_CONSOLE
+ 		cdns_uart_uart_driver.cons = &cdns_uart_console;
+-		cdns_uart_console.index = id;
+ #endif
+ 
+ 		rc = uart_register_driver(&cdns_uart_uart_driver);
