@@ -267,25 +267,6 @@ public:
     }
     return static_cast<double>(static_cast<std::int32_t>(value_)) / (1ul << fractional_width);
   }
-
-  inline std::int32_t integer() const {
-    return static_cast<std::int32_t>(value_) / (1ul << fractional_width);
-  }
-
-  template <std::size_t Digits>
-  inline std::uint64_t fractional() const {
-    static_assert(Digits > 0);
-    constexpr auto d = pow10(Digits);
-    const auto f = static_cast<std::uint64_t>(value_ & fractional_mask);
-    return f * d / (1ul << fractional_width);
-  }
-
-private:
-  static constexpr std::uint64_t pow10(std::size_t n) {
-    std::uint64_t v = 1;
-    for (auto i = 0ul; i < n; ++i) v *= 10;
-    return v;
-  }
 };
 
 enum class color_mode : std::uint8_t {
