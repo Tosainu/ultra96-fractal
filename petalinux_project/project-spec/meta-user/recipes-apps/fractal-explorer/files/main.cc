@@ -247,15 +247,8 @@ public:
     const auto frac = static_cast<std::uint64_t>(s.frac) | (1ul << 52);
     const auto exp = static_cast<std::int16_t>(s.exp) - 1023;
 
-    std::size_t shift;
-    if (std::int32_t s = 52 - exp; static_cast<std::int32_t>(fractional_width) > s) {
-      shift = fractional_width - s;
-    } else {
-      shift = s - fractional_width;
-    }
-
     std::uint32_t ret;
-    if (shift >= 0) {
+    if (const std::int32_t shift = 52 - exp - fractional_width; shift >= 0) {
       ret = frac >> shift;
     } else {
       ret = frac << -shift;
