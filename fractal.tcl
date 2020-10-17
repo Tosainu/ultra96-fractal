@@ -119,8 +119,8 @@ if {[string equal [get_filesets -quiet sources_1] ""]} {
 # Generate memory files
 source "${origin_dir}/util/generate_rom_values.tcl"
 set rom [fractal_utils::generate_rom_values]
-file mkdir [file normalize "${origin_dir}/vivado_project/fractal.srcs/sources_1/new"]
-set fd [open [file normalize "${origin_dir}/vivado_project/fractal.srcs/sources_1/new/color_table.mem"] w]
+file mkdir [file normalize "${proj_dir}/${_xil_proj_name_}.srcs/sources_1/new"]
+set fd [open [file normalize "${proj_dir}/${_xil_proj_name_}.srcs/sources_1/new/color_table.mem"] w]
 foreach v $rom { puts $fd $v }
 close $fd
 
@@ -132,7 +132,7 @@ set files [list \
  [file normalize "${origin_dir}/src/fractal_colorizer.sv"] \
  [file normalize "${origin_dir}/src/fractal_generator.sv"] \
  [file normalize "${origin_dir}/src/fractal_kernel.sv"] \
- [file normalize "${origin_dir}/vivado_project/fractal.srcs/sources_1/new/color_table.mem"] \
+ [file normalize "${proj_dir}/${_xil_proj_name_}.srcs/sources_1/new/color_table.mem"] \
 ]
 add_files -norecurse -fileset $obj $files
 
@@ -154,7 +154,7 @@ set_property -name "file_type" -value "SystemVerilog" -objects $file_obj
 
 
 # Set 'sources_1' fileset file properties for local files
-set file "${origin_dir}/vivado_project/fractal.srcs/sources_1/new/color_table.mem"
+set file "${proj_dir}/${_xil_proj_name_}.srcs/sources_1/new/color_table.mem"
 set file [file normalize $file]
 set file_obj [get_files -of_objects [get_filesets sources_1] [list "*$file"]]
 set_property -name "file_type" -value "Memory File" -objects $file_obj
