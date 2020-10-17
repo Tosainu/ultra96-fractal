@@ -9,10 +9,12 @@ Video: <https://twitter.com/myon___/status/1163835624710795264>
 
 ## Try it on your Ultra96
 
-1. Download `BOOT.BIN` and `image.ub` from the [latest release page][latest release], copy these onto FAT32 formatted microSD card and insert it into the Ultra96.
-2. Connect the Ultra96 to a monitor and power supply.
-3. (optional but recomended) Connect the gamepad (tested with [Logitech Gamepad F310][f310]) to the Ultra96.
-4. Press the power button.
+1. Download `ultra96v1.zip` or `ultra96v2.zip` from the [latest release page][latest release], extract the files (`BOOT.BIN`, `boot.scr`, `image.ub`), and copy these onto FAT32 formatted microSD card.
+2. Insert the microSD card into the Ultra96 microSD card slot.
+3. Connect the Ultra96 to a monitor.
+4. (optional) Connect a gamepad (e.g. [Logitech Gamepad F310][f310]) to the Ultra96.
+5. Connect the power supply to the Ultra96.
+6. Press the power button.
 
 ## How to build
 
