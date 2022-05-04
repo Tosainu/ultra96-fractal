@@ -20,7 +20,7 @@ Video: <https://twitter.com/myon___/status/1163835624710795264>
 
 Required Tools:
 
-- [Vivado Design Suite - HLx Editions][vivado] (2020.1)
+- [Vivado Design Suite - HLx Editions][vivado] (2022.1)
 - [PetaLinux Tools][petalinux] (2020.1)
 
 1. Clone repository

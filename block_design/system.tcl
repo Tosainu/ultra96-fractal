@@ -30,7 +30,7 @@ proc cr_bd_system { srcset {parentCell ""} } {
   xilinx.com:ip:v_axi4s_vid_out:4.0\
   xilinx.com:ip:v_tc:6.2\
   xilinx.com:ip:xlconcat:2.1\
-  xilinx.com:ip:zynq_ultra_ps_e:3.3\
+  xilinx.com:ip:zynq_ultra_ps_e:3.4\
   xilinx.com:ip:xlconstant:1.1\
   xilinx.com:ip:xlslice:1.0\
   "
@@ -332,18 +332,18 @@ proc create_hier_cell_to_live_video { parentCell nameHier } {
   # Create instance: v_tc_0, and set properties
   set v_tc_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:v_tc:6.2 v_tc_0 ]
   set_property -dict [ list \
-   CONFIG.GEN_F0_VBLANK_HEND {960} \
-   CONFIG.GEN_F0_VBLANK_HSTART {960} \
+   CONFIG.GEN_F0_VBLANK_HEND {2008} \
+   CONFIG.GEN_F0_VBLANK_HSTART {2008} \
    CONFIG.GEN_F0_VFRAME_SIZE {1125} \
-   CONFIG.GEN_F0_VSYNC_HEND {1004} \
-   CONFIG.GEN_F0_VSYNC_HSTART {1004} \
+   CONFIG.GEN_F0_VSYNC_HEND {2008} \
+   CONFIG.GEN_F0_VSYNC_HSTART {2008} \
    CONFIG.GEN_F0_VSYNC_VEND {1088} \
    CONFIG.GEN_F0_VSYNC_VSTART {1083} \
-   CONFIG.GEN_F1_VBLANK_HEND {960} \
-   CONFIG.GEN_F1_VBLANK_HSTART {960} \
+   CONFIG.GEN_F1_VBLANK_HEND {2008} \
+   CONFIG.GEN_F1_VBLANK_HSTART {2008} \
    CONFIG.GEN_F1_VFRAME_SIZE {1125} \
-   CONFIG.GEN_F1_VSYNC_HEND {1004} \
-   CONFIG.GEN_F1_VSYNC_HSTART {1004} \
+   CONFIG.GEN_F1_VSYNC_HEND {2008} \
+   CONFIG.GEN_F1_VSYNC_HSTART {2008} \
    CONFIG.GEN_F1_VSYNC_VEND {1088} \
    CONFIG.GEN_F1_VSYNC_VSTART {1083} \
    CONFIG.GEN_HACTIVE_SIZE {1920} \
@@ -362,7 +362,7 @@ proc create_hier_cell_to_live_video { parentCell nameHier } {
  ] $xlconcat_0
 
   # Create instance: zynq_ultra_ps_e_0, and set properties
-  set zynq_ultra_ps_e_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e:3.3 zynq_ultra_ps_e_0 ]
+  set zynq_ultra_ps_e_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:zynq_ultra_ps_e:3.4 zynq_ultra_ps_e_0 ]
   apply_bd_automation -rule xilinx.com:bd_rule:zynq_ultra_ps_e -config {apply_board_preset "1"} $zynq_ultra_ps_e_0
   set_property -dict [list \
     CONFIG.PSU__USE__M_AXI_GP0 {1} \
@@ -413,10 +413,10 @@ proc create_hier_cell_to_live_video { parentCell nameHier } {
   connect_bd_net -net zynq_ultra_ps_e_0_pl_resetn0 [get_bd_pins rst_clk_wiz_0_150M/ext_reset_in] [get_bd_pins rst_clk_wiz_0_300M/ext_reset_in] [get_bd_pins zynq_ultra_ps_e_0/pl_resetn0]
 
   # Create address segments
-  assign_bd_address -offset 0x00000000 -range 0x80000000 -target_address_space [get_bd_addr_spaces axi_vdma_0/Data_S2MM] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP2/HP0_DDR_LOW] -force
-  assign_bd_address -offset 0xFF000000 -range 0x01000000 -target_address_space [get_bd_addr_spaces axi_vdma_0/Data_S2MM] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP2/HP0_LPS_OCM] -force
   assign_bd_address -offset 0x00000000 -range 0x80000000 -target_address_space [get_bd_addr_spaces axi_vdma_0/Data_MM2S] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP3/HP1_DDR_LOW] -force
   assign_bd_address -offset 0xFF000000 -range 0x01000000 -target_address_space [get_bd_addr_spaces axi_vdma_0/Data_MM2S] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP3/HP1_LPS_OCM] -force
+  assign_bd_address -offset 0x00000000 -range 0x80000000 -target_address_space [get_bd_addr_spaces axi_vdma_0/Data_S2MM] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP2/HP0_DDR_LOW] -force
+  assign_bd_address -offset 0xFF000000 -range 0x01000000 -target_address_space [get_bd_addr_spaces axi_vdma_0/Data_S2MM] [get_bd_addr_segs zynq_ultra_ps_e_0/SAXIGP2/HP0_LPS_OCM] -force
   assign_bd_address -offset 0xB0000000 -range 0x00001000 -target_address_space [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs axi_vdma_0/S_AXI_LITE/Reg] -force
   assign_bd_address -offset 0xA0000000 -range 0x00001000 -target_address_space [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs fractal_0/s_axi/reg0] -force
   assign_bd_address -offset 0xB0010000 -range 0x00010000 -target_address_space [get_bd_addr_spaces zynq_ultra_ps_e_0/Data] [get_bd_addr_segs v_tc_0/ctrl/Reg] -force
