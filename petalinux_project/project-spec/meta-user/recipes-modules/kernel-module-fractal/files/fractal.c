@@ -98,7 +98,7 @@ static int fractal_s_stream(struct v4l2_subdev *subdev, int enable)
 }
 
 static int fractal_enum_mbus_code(struct v4l2_subdev *subdev,
-				  struct v4l2_subdev_pad_config *cfg,
+				  struct v4l2_subdev_state *sd_state,
 				  struct v4l2_subdev_mbus_code_enum *code)
 {
 	struct v4l2_mbus_framefmt *format;
@@ -106,7 +106,7 @@ static int fractal_enum_mbus_code(struct v4l2_subdev *subdev,
 	if (code->which == V4L2_SUBDEV_FORMAT_ACTIVE || code->index)
 		return -EINVAL;
 
-	format = v4l2_subdev_get_try_format(subdev, cfg, code->pad);
+	format = v4l2_subdev_get_try_format(subdev, sd_state, code->pad);
 
 	code->code = format->code;
 
@@ -114,7 +114,7 @@ static int fractal_enum_mbus_code(struct v4l2_subdev *subdev,
 }
 
 static int fractal_enum_frame_size(struct v4l2_subdev *subdev,
-				   struct v4l2_subdev_pad_config *cfg,
+				   struct v4l2_subdev_state *sd_state,
 				   struct v4l2_subdev_frame_size_enum *fse)
 {
 	struct v4l2_mbus_framefmt *format;
@@ -122,7 +122,7 @@ static int fractal_enum_frame_size(struct v4l2_subdev *subdev,
 	if (fse->which == V4L2_SUBDEV_FORMAT_ACTIVE)
 		return -EINVAL;
 
-	format = v4l2_subdev_get_try_format(subdev, cfg, fse->pad);
+	format = v4l2_subdev_get_try_format(subdev, sd_state, fse->pad);
 
 	if (fse->index || fse->code != format->code)
 		return -EINVAL;
@@ -136,7 +136,7 @@ static int fractal_enum_frame_size(struct v4l2_subdev *subdev,
 }
 
 static int fractal_set_format(struct v4l2_subdev *subdev,
-			      struct v4l2_subdev_pad_config *cfg,
+			      struct v4l2_subdev_state *sd_state,
 			      struct v4l2_subdev_format *fmt)
 {
 	/* Currently, Fractal IP cannot change pad formats */
@@ -144,7 +144,7 @@ static int fractal_set_format(struct v4l2_subdev *subdev,
 
 	switch (fmt->which) {
 	case V4L2_SUBDEV_FORMAT_TRY:
-		fmt->format = *v4l2_subdev_get_try_format(subdev, cfg, fmt->pad);
+		fmt->format = *v4l2_subdev_get_try_format(subdev, sd_state, fmt->pad);
 		break;
 	case V4L2_SUBDEV_FORMAT_ACTIVE:
 		fmt->format = fractal->format;
@@ -158,14 +158,14 @@ static int fractal_set_format(struct v4l2_subdev *subdev,
 }
 
 static int fractal_get_format(struct v4l2_subdev *subdev,
-			      struct v4l2_subdev_pad_config *cfg,
+			      struct v4l2_subdev_state *sd_state,
 			      struct v4l2_subdev_format *fmt)
 {
 	struct fractal_device *fractal = get_fractal_device(subdev);
 
 	switch (fmt->which) {
 	case V4L2_SUBDEV_FORMAT_TRY:
-		fmt->format = *v4l2_subdev_get_try_format(subdev, cfg, fmt->pad);
+		fmt->format = *v4l2_subdev_get_try_format(subdev, sd_state, fmt->pad);
 		break;
 	case V4L2_SUBDEV_FORMAT_ACTIVE:
 		fmt->format = fractal->format;
@@ -180,7 +180,7 @@ static int fractal_open(struct v4l2_subdev *subdev, struct v4l2_subdev_fh *fh)
 	struct fractal_device *fractal = get_fractal_device(subdev);
 	struct v4l2_mbus_framefmt *format;
 
-	format = v4l2_subdev_get_try_format(subdev, fh->pad, 0);
+	format = v4l2_subdev_get_try_format(subdev, fh->state, 0);
 	*format = fractal->format;
 
 	return 0;
