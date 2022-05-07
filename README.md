@@ -9,7 +9,7 @@ Video: <https://twitter.com/myon___/status/1163835624710795264>
 
 ## Try it on your Ultra96
 
-1. Download `ultra96v1.zip` or `ultra96v2.zip` from the [latest release page][latest release], extract the files (`BOOT.BIN`, `boot.scr`, `image.ub`), and copy these onto FAT32 formatted microSD card.
+1. Download `ultra96v2.zip` from the [latest release page][latest release], extract the files (`BOOT.BIN`, `boot.scr`, `image.ub`), and copy these onto FAT32 formatted microSD card.
 2. Insert the microSD card into the Ultra96 microSD card slot.
 3. Connect the Ultra96 to a monitor.
 4. (optional) Connect a gamepad (e.g. [Logitech Gamepad F310][f310]) to the Ultra96.
@@ -30,10 +30,7 @@ Required Tools:
 
 2. Import Vivado project and generate Bitstream
 
-        # ultra96v1
-        $ vivado -mode tcl -source fractal.tcl
-        # ultra96v2
-        $ vivado -mode tcl -source fractal.tcl -tclargs --target ultra96v2
+        $ vivado -mode tcl -source fractal.tcl -tclargs
 
         Vivado% launch_runs impl_1 -to_step write_bitstream -jobs 32
         Vivado% wait_on_run impl_1

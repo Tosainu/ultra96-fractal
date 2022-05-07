@@ -38,17 +38,13 @@ variable script_file
 set script_file "fractal.tcl"
 
 set board_presets { \
-  ultra96v1 { \
-    target_board "em.avnet.com:ultra96v1:part0:1.2" \
-    target_part  "xczu3eg-sbva484-1-e" \
-  } \
   ultra96v2 { \
     target_board "em.avnet.com:ultra96v2:part0:1.0" \
     target_part  "xczu3eg-sbva484-1-e" \
   } \
 }
 
-set preset "ultra96v1"
+set preset "ultra96v2"
 
 # Help information for this script
 proc print_help {} {
