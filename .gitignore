@@ -1,2 +1,3 @@
-/hls_project
+*.jou
+*.log
 /vivado_project
