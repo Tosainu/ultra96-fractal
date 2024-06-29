@@ -56,10 +56,10 @@ Required Tools:
 
 ## License
 
-Distributed under the [MIT license](https://github.com/Tosainu/ultra96-fractal/blob/master/LICENSE) except these files.
+Distributed under the [MIT license](./LICENSE) except these files.
 
-- [petalinux_project/project-spec/meta-user/recipes-modules/kernel-module-fractal/*](https://github.com/Tosainu/ultra96-fractal/tree/master/petalinux_project/project-spec/meta-user/recipes-modules/kernel-module-fractal)
-    - [GNU General Public License v2.0](https://github.com/Tosainu/ultra96-fractal/blob/master/petalinux_project/project-spec/meta-user/recipes-modules/kernel-module-fractal/files/COPYING)
+- [petalinux_project/project-spec/meta-user/recipes-modules/kernel-module-fractal/*](./petalinux_project/project-spec/meta-user/recipes-modules/kernel-module-fractal)
+    - [GNU General Public License v2.0](.r/petalinux_project/project-spec/meta-user/recipes-modules/kernel-module-fractal/files/COPYING)
 
 ## See also
 
@@ -71,8 +71,8 @@ Distributed under the [MIT license](https://github.com/Tosainu/ultra96-fractal/b
 
 [julia set]: https://en.wikipedia.org/wiki/Julia_set
 [ultra96]: https://www.96boards.org/product/ultra96/
-[picture]: https://github.com/Tosainu/ultra96-fractal/blob/master/images/IMG_20190827_143055-3.jpg
-[block diagram]: https://github.com/Tosainu/ultra96-fractal/blob/master/images/block.svg
+[picture]: ./images/IMG_20190827_143055-3.jpg
+[block diagram]: ./images/block.svg
 [latest release]: https://github.com/Tosainu/ultra96-fractal/releases/latest
 [f310]: https://www.logitechg.com/en-roeu/products/gamepads/f310-gamepad.html
 [vivado]: https://www.xilinx.com/products/design-tools/vivado.html
