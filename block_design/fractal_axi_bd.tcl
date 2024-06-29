@@ -106,31 +106,18 @@ proc cr_bd_fractal_axi_bd { srcset {parentCell ""} } {
 
   # Create instance: axi_vip_0, and set properties
   set axi_vip_0 [ create_bd_cell -type ip -vlnv xilinx.com:ip:axi_vip:1.1 axi_vip_0 ]
-  set_property -dict [ list \
-   CONFIG.ADDR_WIDTH {32} \
-   CONFIG.ARUSER_WIDTH {0} \
-   CONFIG.AWUSER_WIDTH {0} \
-   CONFIG.BUSER_WIDTH {0} \
-   CONFIG.DATA_WIDTH {32} \
-   CONFIG.HAS_BRESP {1} \
-   CONFIG.HAS_BURST {0} \
-   CONFIG.HAS_CACHE {0} \
-   CONFIG.HAS_LOCK {0} \
-   CONFIG.HAS_PROT {1} \
-   CONFIG.HAS_QOS {0} \
-   CONFIG.HAS_REGION {0} \
-   CONFIG.HAS_RRESP {1} \
-   CONFIG.HAS_WSTRB {1} \
-   CONFIG.ID_WIDTH {0} \
-   CONFIG.INTERFACE_MODE {MASTER} \
-   CONFIG.PROTOCOL {AXI4LITE} \
-   CONFIG.READ_WRITE_MODE {READ_WRITE} \
-   CONFIG.RUSER_BITS_PER_BYTE {0} \
-   CONFIG.RUSER_WIDTH {0} \
-   CONFIG.SUPPORTS_NARROW {0} \
-   CONFIG.WUSER_BITS_PER_BYTE {0} \
-   CONFIG.WUSER_WIDTH {0} \
- ] $axi_vip_0
+  set_property -dict [list \
+    CONFIG.ADDR_WIDTH {32} \
+    CONFIG.DATA_WIDTH {32} \
+    CONFIG.HAS_BRESP {1} \
+    CONFIG.HAS_PROT {1} \
+    CONFIG.HAS_RRESP {1} \
+    CONFIG.HAS_WSTRB {1} \
+    CONFIG.INTERFACE_MODE {MASTER} \
+    CONFIG.PROTOCOL {AXI4LITE} \
+    CONFIG.READ_WRITE_MODE {READ_WRITE} \
+  ] $axi_vip_0
+
 
   # Create instance: fractal_axi_0, and set properties
   set block_name fractal_axi
@@ -147,9 +134,9 @@ proc cr_bd_fractal_axi_bd { srcset {parentCell ""} } {
   connect_bd_intf_net -intf_net axi_vip_0_M_AXI [get_bd_intf_pins axi_vip_0/M_AXI] [get_bd_intf_pins fractal_axi_0/S_AXI]
 
   # Create port connections
-  connect_bd_net -net aclk_1 [get_bd_ports aclk] [get_bd_pins axi_vip_0/aclk] [get_bd_pins fractal_axi_0/S_AXI_ACLK]
-  connect_bd_net -net aresetn_1 [get_bd_ports aresetn] [get_bd_pins axi_vip_0/aresetn] [get_bd_pins fractal_axi_0/S_AXI_ARESETN]
-  connect_bd_net -net fractal_axi_0_registers [get_bd_ports registers] [get_bd_pins fractal_axi_0/registers]
+  connect_bd_net -net aclk_1 [get_bd_ports aclk] [get_bd_pins fractal_axi_0/S_AXI_ACLK] [get_bd_pins axi_vip_0/aclk]
+  connect_bd_net -net aresetn_1 [get_bd_ports aresetn] [get_bd_pins fractal_axi_0/S_AXI_ARESETN] [get_bd_pins axi_vip_0/aresetn]
+  connect_bd_net -net fractal_axi_0_registers [get_bd_pins fractal_axi_0/registers] [get_bd_ports registers]
 
   # Create address segments
   assign_bd_address -offset 0x44A00000 -range 0x00010000 -target_address_space [get_bd_addr_spaces axi_vip_0/Master_AXI] [get_bd_addr_segs fractal_axi_0/S_AXI/reg0] -force
