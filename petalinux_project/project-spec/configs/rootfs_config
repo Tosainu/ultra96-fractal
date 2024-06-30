@@ -78,6 +78,13 @@ CONFIG_system-zynqmp=y
 # CONFIG_cpio-rmt is not set
 
 #
+# crda 
+#
+# CONFIG_crda is not set
+# CONFIG_crda-dbg is not set
+# CONFIG_crda-dev is not set
+
+#
 # dbus 
 #
 # CONFIG_dbus is not set
@@ -523,13 +530,6 @@ CONFIG_system-zynqmp=y
 # CONFIG_lrzsz is not set
 # CONFIG_lrzsz-dbg is not set
 # CONFIG_lrzsz-dev is not set
-
-#
-# mailx 
-#
-# CONFIG_mailx is not set
-# CONFIG_mailx-dbg is not set
-# CONFIG_mailx-dev is not set
 
 #
 # minicom 
@@ -1035,13 +1035,6 @@ CONFIG_system-zynqmp=y
 # CONFIG_perl-dev is not set
 
 #
-# python3-nose 
-#
-# CONFIG_python3-nose is not set
-# CONFIG_python3-nose-dbg is not set
-# CONFIG_python3-nose-dev is not set
-
-#
 # python3-numpy 
 #
 # CONFIG_python3-numpy is not set
@@ -1433,7 +1426,6 @@ CONFIG_system-zynqmp=y
 # libgcrypt 
 #
 # CONFIG_libgcrypt is not set
-# CONFIG_dumpsexp-dev is not set
 # CONFIG_libgcrypt-dbg is not set
 # CONFIG_libgcrypt-dev is not set
 
@@ -1523,9 +1515,13 @@ CONFIG_system-zynqmp=y
 #
 # libmali-xlnx 
 #
-# CONFIG_libmali-xlnx is not set
+CONFIG_libmali-xlnx=y
 # CONFIG_libmali-xlnx-dbg is not set
 # CONFIG_libmali-xlnx-dev is not set
+# CONFIG_mali-backend-fbdev is not set
+# CONFIG_mali-backend-headless is not set
+CONFIG_mali-backend-wayland=y
+# CONFIG_mali-backend-x11 is not set
 
 #
 # libmetal 
@@ -1991,6 +1987,11 @@ CONFIG_system-zynqmp=y
 # CONFIG_libtirpc-dev is not set
 
 #
+# wolfssl
+#
+# CONFIG_wolfssl is not set
+
+#
 # openssl 
 #
 # CONFIG_openssl is not set
@@ -2254,11 +2255,11 @@ CONFIG_system-zynqmp=y
 # CONFIG_cryptodev-linux-dbg is not set
 
 #
-# dstat 
+# dool 
 #
-# CONFIG_dstat is not set
-# CONFIG_dstat-dev is not set
-# CONFIG_dstat-dbg is not set
+# CONFIG_dool is not set
+# CONFIG_dool-dev is not set
+# CONFIG_dool-dbg is not set
 
 #
 # encodings 
@@ -2268,17 +2269,11 @@ CONFIG_system-zynqmp=y
 # CONFIG_encodings-dbg is not set
 
 #
-# epiphany 
-#
-# CONFIG_epiphany is not set
-# CONFIG_epiphany-dev is not set
-# CONFIG_epiphany-dbg is not set
-
-#
 # libudev 
 #
 # CONFIG_libudev is not set
 # CONFIG_udev-extraconf is not set
+# CONFIG_linux-xlnx-udev-rules is not set
 
 #
 # fbset 
@@ -2462,6 +2457,12 @@ CONFIG_system-zynqmp=y
 # CONFIG_iso-codes is not set
 # CONFIG_iso-codes-dbg is not set
 # CONFIG_iso-codes-dev is not set
+
+#
+# inetutils-tftpd 
+#
+# CONFIG_inetutils-tftpd is not set
+# CONFIG_inetutils-tftpd-dbg is not set
 
 #
 # json-c 
@@ -3197,18 +3198,6 @@ CONFIG_packagegroup-core-boot=y
 # CONFIG_watchdog-config-dev is not set
 
 #
-# watchdog-init
-#
-CONFIG_watchdog-init=y
-
-#
-# webkitgtk 
-#
-# CONFIG_webkitgtk is not set
-# CONFIG_webkitgtk-dbg is not set
-# CONFIG_webkitgtk-dev is not set
-
-#
 # x11perf 
 #
 # CONFIG_x11perf is not set
@@ -3278,13 +3267,6 @@ CONFIG_watchdog-init=y
 # CONFIG_xf86-input-evdev is not set
 # CONFIG_xf86-input-evdev-dbg is not set
 # CONFIG_xf86-input-evdev-dev is not set
-
-#
-# xf86-input-keyboard 
-#
-# CONFIG_xf86-input-keyboard is not set
-# CONFIG_xf86-input-keyboard-dev is not set
-# CONFIG_xf86-input-keyboard-dbg is not set
 
 #
 # xf86-input-mouse 
@@ -3599,7 +3581,6 @@ CONFIG_watchdog-init=y
 # CONFIG_libdrm-dev is not set
 # CONFIG_libdrm-freedreno is not set
 # CONFIG_libdrm-radeon is not set
-# CONFIG_libdrm-kms is not set
 # CONFIG_libdrm-dbg is not set
 # CONFIG_libdrm-omap is not set
 
@@ -3686,14 +3667,6 @@ CONFIG_liberation-fonts=y
 # CONFIG_gnome-common is not set
 # CONFIG_gnome-common-dev is not set
 # CONFIG_gnome-common-dbg is not set
-
-#
-# gnome-desktop3 
-#
-# CONFIG_gnome-desktop3 is not set
-# CONFIG_gnome-desktop3-dbg is not set
-# CONFIG_gnome-desktop3-dev is not set
-# CONFIG_libgnome-desktop3 is not set
 
 #
 # gnome-themes-extra 
@@ -4067,6 +4040,13 @@ CONFIG_packagegroup-petalinux-v4lutils=y
 # CONFIG_packagegroup-petalinux-v4lutils-dev is not set
 
 #
+# packagegroup-petalinux-vitis-acceleration-essential 
+#
+# CONFIG_packagegroup-petalinux-vitis-acceleration-essential is not set
+# CONFIG_packagegroup-petalinux-vitis-acceleration-essential-dbg is not set
+# CONFIG_packagegroup-petalinux-vitis-acceleration-essential-dev is not set
+
+#
 # packagegroup-petalinux-weston 
 #
 # CONFIG_packagegroup-petalinux-weston is not set
@@ -4094,28 +4074,22 @@ CONFIG_packagegroup-petalinux-v4lutils=y
 # CONFIG_imagefeature-ssh-server-openssh is not set
 # CONFIG_imagefeature-hwcodecs is not set
 # CONFIG_imagefeature-package-management is not set
-CONFIG_imagefeature-debug-tweaks=y
-CONFIG_auto-login=y
+# CONFIG_imagefeature-debug-tweaks is not set
+CONFIG_imagefeature-empty-root-password=y
+CONFIG_imagefeature-serial-autologin-root=y
 # CONFIG_Init-manager-systemd is not set
 CONFIG_Init-manager-sysvinit=y
 
 #
-# apps 
-#
-CONFIG_fractal-explorer=y
-
-#
-# modules 
-#
-CONFIG_kernel-module-fractal=y
-
-#
 # user packages 
 #
+CONFIG_fractal-explorer=y
+CONFIG_kernel-module-fractal=y
 
 #
 # PetaLinux RootFS Settings
 #
 CONFIG_ADD_EXTRA_USERS=""
+CONFIG_CREATE_NEW_GROUPS=""
 CONFIG_ADD_USERS_TO_GROUPS=""
 CONFIG_ADD_USERS_TO_SUDOERS=""

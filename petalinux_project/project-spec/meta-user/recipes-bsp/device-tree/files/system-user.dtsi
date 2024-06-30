@@ -1,5 +1,26 @@
 /include/ "system-conf.dtsi"
 / {
+	/delete-node/ gpio-keys;
+	/delete-node/ fixedregulator-mmcsdio;
+	/delete-node/ sdio-pwrseq;
+	/delete-node/ ina226;
+	leds {
+		/delete-node/ ds3;
+		/delete-node/ ds4;
+		/delete-node/ ds5;
+	};
+};
+
+&sdhci1 {
+	status = "disabled";
+	/delete-property/ mmc-pwrseq;
+	/delete-property/ vqmmc-supply;
+	/delete-node/ wifi@2;
+};
+
+&uart0 {
+	status = "disabled";
+	/delete-node/ bluetooth;
 };
 
 &fractal_0 {
