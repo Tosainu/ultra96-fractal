@@ -403,12 +403,26 @@ std::tuple<std::uint32_t, std::uint32_t, ::drmModeModeInfo> init_drm(int fd) {
     }
   }
 
-  auto mode = connector->modes[0];
+  // choose 1920x1080 >24Hz instead of the preferred mode if available
+  ::drmModeModeInfo* mode{};
+  for (int i = 0; i < connector->count_modes; ++i) {
+    auto& m = connector->modes[i];
+    if (m.hdisplay != 1920 || m.vdisplay != 1080 || m.vrefresh < 24) {
+      continue;
+    }
+    if (!mode || m.vrefresh > mode->vrefresh) {
+      mode = &m;
+    }
+  }
+  if (!mode) {
+    mode = &connector->modes[0];
+  }
+
   std::uint32_t connector_id = connector->connector_id;
 
   ::drmModeFreeConnector(connector);
 
-  return std::make_tuple(crtc_id, connector_id, mode);
+  return std::make_tuple(crtc_id, connector_id, *mode);
 }
 
 std::tuple<::EGLDisplay, ::EGLConfig, ::EGLContext> init_egl(::EGLDisplay display) {
@@ -962,7 +976,8 @@ auto main() -> int {
 
   std::tie(ctx.crtc_id, ctx.connector_id, ctx.display_mode) = init_drm(ctx.drm_fd);
   std::cout << "connector: " << ctx.connector_id << ", mode: " << ctx.display_mode.hdisplay << 'x'
-            << ctx.display_mode.vdisplay << ", crtc: " << ctx.crtc_id << std::endl;
+            << ctx.display_mode.vdisplay << " @ " << ctx.display_mode.vrefresh << " Hz, crtc: "
+            << ctx.crtc_id << std::endl;
 
   ctx.gbm_device = ::gbm_create_device(ctx.drm_fd);
   if (!ctx.gbm_device) {
