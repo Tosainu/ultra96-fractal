@@ -599,8 +599,8 @@ static void redraw_overlay_surface(::window_context* ctx) {
                 "x: %12.8f,  y:  %12.8f,  scale: %12.8f\n"
                 "\n"
                 "fps (fpga / display): %.4f / %.4f",
-                ctx->app.cr, ctx->app.ci, ctx->app.offset_x, ctx->app.offset_y, ctx->app.scale,
-                ctx->v4l2_fps, ctx->display_fps);
+                ctx->app.cr, ctx->app.ci, ctx->app.offset_x, ctx->app.offset_y,
+                ctx->app.scale * ctx->app.scale, ctx->v4l2_fps, ctx->display_fps);
 
   ::cairo_set_font_size(cr, 13);
   for (auto [y, p] = std::tuple{0, std::begin(str)}; p < std::end(str) && *p;) {
@@ -752,8 +752,9 @@ static void handle_timer_events(window_context* ctx, std::uint32_t events) {
     if (ctx->joystick_fd >= 0) {
       const auto& j = ctx->joystick;
 
-      if (j.buttons[1] && app.scale_q >= -2.0) app.scale_q -= 0.001;
-      if (j.buttons[2] && app.scale_q <= 7.25) app.scale_q += 0.001;
+      const auto scale_step = j.buttons[6] ? 0.01 : 0.001;
+      if (j.buttons[1] && app.scale_q >= -2.0) app.scale_q -= scale_step;
+      if (j.buttons[2] && app.scale_q <= 7.25) app.scale_q += scale_step;
 
       if (j.axes[4] > 0) shift_x += 2.0;
       if (j.axes[4] < 0) shift_x -= 2.0;
