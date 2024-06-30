@@ -20,8 +20,8 @@ Video: <https://twitter.com/myon___/status/1163835624710795264>
 
 Required Tools:
 
-- [Vivado Design Suite - HLx Editions][vivado] (2022.1)
-- [PetaLinux Tools][petalinux] (2022.1)
+- [Vivado Design Suite - HLx Editions][vivado] (2024.1)
+- [PetaLinux Tools][petalinux] (2024.1)
 
 1. Clone repository
 
@@ -30,7 +30,7 @@ Required Tools:
 
 2. Import Vivado project and generate Bitstream
 
-        $ vivado -mode tcl -source fractal.tcl -tclargs
+        $ vivado -mode tcl -source fractal.tcl
 
         Vivado% launch_runs impl_1 -to_step write_bitstream -jobs 32
         Vivado% wait_on_run impl_1
@@ -42,7 +42,7 @@ Required Tools:
         $ cd petalinux_project
         $ petalinux-config --silentconfig --get-hw-description=../vivado_project
         $ petalinux-build
-        $ petalinux-package --boot --fpga --u-boot
+        $ petalinux-package boot --force --format BIN --fpga --u-boot
 
 4. Copy generated files to microSD card
 
