@@ -3,9 +3,9 @@ ultra96-fractal
 
 This is an Hardware-accelerated [Julia set][julia set] explorer running on [Ultra96][ultra96]. The current implementation can generate 1920x1080 pixels image at 16 frames per seconds.
 
-![Picture][picture]
+https://github.com/Tosainu/ultra96-fractal/assets/6215720/ab290f06-7e3d-43c6-b60d-0eed084b3992
 
-Video: <https://twitter.com/myon___/status/1163835624710795264>
+Or see the full video: https://youtu.be/qDFYMZa5ML4
 
 ## Try it on your Ultra96
 
@@ -49,6 +49,8 @@ Required Tools:
         $ cp image/linux/{BOOT.BIN,boot.scr,image.ub} /path/to/sd/card
 
 ## How it works
+
+![Picture][picture]
 
 ![Block diagram][block diagram]
 
