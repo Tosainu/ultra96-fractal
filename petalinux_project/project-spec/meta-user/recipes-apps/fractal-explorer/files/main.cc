@@ -1,19 +1,13 @@
-#include <algorithm>
 #include <array>
 #include <chrono>
 #include <cmath>
 #include <cstdint>
 #include <cstring>
-#include <filesystem>
-#include <fstream>
-#include <iomanip>
 #include <iostream>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string_view>
-#include <thread>
-#include <vector>
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
@@ -43,7 +37,6 @@ extern "C" {
 
 using namespace std::chrono_literals;
 using namespace std::string_literals;
-using namespace std::string_view_literals;
 
 static constexpr std::uint32_t num_buffers = 8;
 
@@ -302,11 +295,10 @@ class fractal_controller {
   std::uint32_t* reg_;
 
 public:
-  fractal_controller(std::string_view device)
-      : fd_{-1}, reg_{static_cast<std::uint32_t*>(MAP_FAILED)} {
-    fd_ = ::open(device.data(), O_RDWR | O_SYNC);
+  fractal_controller(const char* device) : fd_{-1}, reg_{static_cast<std::uint32_t*>(MAP_FAILED)} {
+    fd_ = ::open(device, O_RDWR | O_SYNC);
     if (fd_ < 0) {
-      throw std::runtime_error{"failed to open "s + device.data() + ": "s + std::strerror(errno)};
+      throw std::runtime_error{"failed to open "s + device + ": "s + std::strerror(errno)};
     }
 
     const auto s = ::sysconf(_SC_PAGESIZE);
@@ -625,8 +617,8 @@ static void redraw(void* data) {
   flush_main_surface(ctx);
 }
 
-static void drm_page_flip_handler(int fd, unsigned int frame, unsigned int sec, unsigned int usec,
-                                  void* data) {
+static void drm_page_flip_handler([[maybe_unused]] int fd, [[maybe_unused]] unsigned int frame,
+                                  unsigned int sec, unsigned int usec, void* data) {
   auto ctx = static_cast<window_context*>(data);
 
   if (!ctx->gbm_bo_next) {
@@ -851,24 +843,6 @@ static void handle_joystick_events(window_context* ctx, std::uint32_t events) {
   }
 }
 
-static std::optional<std::string> find_fractal_uio_device() {
-  const auto uio_base = std::filesystem::path{"/sys/class/uio"};
-  const auto dev_base = std::filesystem::path{"/dev"};
-
-  for (int n = 0; n < 16; ++n) {
-    char uio_n[8];
-    std::snprintf(uio_n, sizeof uio_n, "uio%d", n);
-
-    auto ifs = std::ifstream(uio_base / uio_n / "name");
-    if (std::string(std::istreambuf_iterator<char>(ifs), std::istreambuf_iterator<char>()) ==
-        "fractal\n") {
-      return dev_base / uio_n;
-    }
-  }
-
-  return std::nullopt;
-}
-
 auto main() -> int {
   window_context ctx{};
   ctx.width = 1920;
@@ -977,8 +951,8 @@ auto main() -> int {
 
   std::tie(ctx.crtc_id, ctx.connector_id, ctx.display_mode) = init_drm(ctx.drm_fd);
   std::cout << "connector: " << ctx.connector_id << ", mode: " << ctx.display_mode.hdisplay << 'x'
-            << ctx.display_mode.vdisplay << " @ " << ctx.display_mode.vrefresh << " Hz, crtc: "
-            << ctx.crtc_id << std::endl;
+            << ctx.display_mode.vdisplay << " @ " << ctx.display_mode.vrefresh
+            << " Hz, crtc: " << ctx.crtc_id << std::endl;
 
   ctx.gbm_device = ::gbm_create_device(ctx.drm_fd);
   if (!ctx.gbm_device) {
@@ -1144,10 +1118,27 @@ auto main() -> int {
   ctx.app.offset_x = 0.0;
   ctx.app.offset_y = 0.0;
 
-  if (auto dev = find_fractal_uio_device()) {
-    std::cout << "fractal uio device: " << *dev << std::endl;
-    ctx.fractal_ctl = std::make_unique<fractal_controller>(*dev);
-  } else {
+  for (int n = 0; n < 16; ++n) {
+    char path[32], buf[16];
+    std::snprintf(path, sizeof path, "/sys/class/uio/uio%d/name", n);
+
+    const int fd = ::open(path, O_RDONLY);
+    if (fd < 0) continue;
+
+    const auto len = ::read(fd, buf, sizeof buf);
+    ::close(fd);
+    if (len < 0) continue;
+
+    if (std::string_view{buf, static_cast<std::size_t>(len)} == "fractal\n") {
+      std::snprintf(path, sizeof path, "/dev/uio%d", n);
+
+      std::cout << "fractal uio device: " << path << std::endl;
+      ctx.fractal_ctl = std::make_unique<fractal_controller>(path);
+      break;
+    }
+  }
+
+  if (!ctx.fractal_ctl) {
     std::cerr << "failed to find fractal uio device" << std::endl;
     return -1;
   }
