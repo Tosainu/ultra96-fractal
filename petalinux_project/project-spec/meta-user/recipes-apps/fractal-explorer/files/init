@@ -14,9 +14,12 @@ case "$1" in
     if [ -z "$(/bin/pidof $cmd)" ]; then
       . /etc/profile
 
-      if [ ! -f /dev/input/js0 ]; then
-        sleep 10
-      fi
+      for _ in $(seq 10); do
+        if [ -e /dev/input/js0 ]; then
+          break
+        fi
+        sleep 1
+      done
 
       $cmd &
     fi

@@ -492,8 +492,8 @@ static std::uint32_t get_gbm_bo_fb_id(int drm_fd, ::gbm_bo* bo) {
   const std::uint32_t offsets[4] = {};
 
   std::uint32_t fb_id{};
-  if (::drmModeAddFB2(drm_fd, width, height, DRM_FORMAT_ARGB8888, handles, strides, offsets, &fb_id,
-                      0)) {
+  if (::drmModeAddFB2(
+          drm_fd, width, height, DRM_FORMAT_ARGB8888, handles, strides, offsets, &fb_id, 0)) {
     throw std::runtime_error{"drmModeAddFB2: "s + std::strerror(errno)};
   }
 
@@ -599,23 +599,34 @@ static void redraw_overlay_surface(::window_context* ctx) {
 
   constexpr auto max_len = 255;
   char str[max_len] = {};
-  std::snprintf(str, max_len,
-                "c: %12.8f%+.8fi\n"
-                "x: %12.8f,  y:  %12.8f,  scale: %12.8f\n"
-                "\n"
-                "fps (fpga / display): %.4f / %.4f",
-                ctx->app.cr, ctx->app.ci, ctx->app.offset_x, ctx->app.offset_y,
-                ctx->app.scale * ctx->app.scale, ctx->v4l2_fps, ctx->display_fps);
+  const auto len = std::snprintf(
+      str,
+      max_len,
+      "c: %12.8f%+.8fi\n"
+      "x: %12.8f,  y:  %12.8f,  scale: %12.8f\n"
+      "\n"
+      "fps (fpga / display): %.4f / %.4f\n",
+      ctx->app.cr,
+      ctx->app.ci,
+      ctx->app.offset_x,
+      ctx->app.offset_y,
+      ctx->app.scale * ctx->app.scale,
+      ctx->v4l2_fps,
+      ctx->display_fps);
 
-  ::cairo_set_font_size(cr, 13);
-  for (auto [y, p] = std::tuple{0, std::begin(str)}; p < std::end(str) && *p;) {
-    auto q = p;
-    for (; q < std::end(str) && *q != '\n' && *q != '\0'; ++q)
-      ;
-    *q = '\0';
-    ::cairo_move_to(cr, 48.0, 134.0 + 20 * y++);
-    ::cairo_show_text(cr, p);
-    p = q + 1;
+  if (len >= 0) {
+    ::cairo_set_font_size(cr, 13);
+    int y = 0;
+    for (char* p = str; p <= str + len;) {
+      auto nl = std::strchr(p, '\n');
+      if (!nl) {
+        break;
+      }
+      *nl = '\0';
+      ::cairo_move_to(cr, 48.0, 134.0 + 20 * y++);
+      ::cairo_show_text(cr, p);
+      p = nl + 1;
+    }
   }
 
   ::cairo_destroy(cr);
@@ -630,8 +641,9 @@ static void redraw(void* data) {
   flush_main_surface(ctx);
 }
 
-static void drm_page_flip_handler([[maybe_unused]] int fd, [[maybe_unused]] unsigned int frame,
-                                  unsigned int sec, unsigned int usec, void* data) {
+static void drm_page_flip_handler(
+    [[maybe_unused]] int fd, [[maybe_unused]] unsigned int frame, unsigned int sec,
+    unsigned int usec, void* data) {
   auto ctx = static_cast<window_context*>(data);
 
   if (!ctx->gbm_bo_next) {
@@ -654,14 +666,12 @@ static void drm_page_flip_handler([[maybe_unused]] int fd, [[maybe_unused]] unsi
   ctx->gbm_bo_next = ::gbm_surface_lock_front_buffer(ctx->gbm_surface);
   ctx->fb_id_next = get_gbm_bo_fb_id(ctx->drm_fd, ctx->gbm_bo_next);
 
-  if (::drmModePageFlip(ctx->drm_fd, ctx->crtc_id, ctx->fb_id_next, DRM_MODE_PAGE_FLIP_EVENT,
-                        ctx)) {
+  if (::drmModePageFlip(
+          ctx->drm_fd, ctx->crtc_id, ctx->fb_id_next, DRM_MODE_PAGE_FLIP_EVENT, ctx)) {
     std::cerr << "failed to queue page flip: " << std::strerror(errno) << std::endl;
     ctx->running = false;
   }
 }
-
-static ::drmEventContext drm_event_context;
 
 static void handle_drm_events(window_context* ctx, std::uint32_t events) {
   if (events & EPOLLERR || events & EPOLLHUP) {
@@ -673,10 +683,11 @@ static void handle_drm_events(window_context* ctx, std::uint32_t events) {
     return;
   }
 
-  drm_event_context.version = DRM_EVENT_CONTEXT_VERSION;
-  drm_event_context.page_flip_handler = drm_page_flip_handler;
+  ::drmEventContext ev{};
+  ev.version = DRM_EVENT_CONTEXT_VERSION;
+  ev.page_flip_handler = drm_page_flip_handler;
 
-  ::drmHandleEvent(ctx->drm_fd, &drm_event_context);
+  ::drmHandleEvent(ctx->drm_fd, &ev);
 }
 
 static void handle_v4l2_events(window_context* ctx, std::uint32_t events) {
@@ -926,8 +937,13 @@ auto main() -> int {
         perror_exit("VIDIOC_QUERYBUF");
       }
 
-      void* mem = ::mmap(nullptr, buf.m.planes[0].length, PROT_READ | PROT_WRITE, MAP_SHARED,
-                         ctx.video_fd, buf.m.planes[0].m.mem_offset);
+      void* mem = ::mmap(
+          nullptr,
+          buf.m.planes[0].length,
+          PROT_READ | PROT_WRITE,
+          MAP_SHARED,
+          ctx.video_fd,
+          buf.m.planes[0].m.mem_offset);
       if (mem == MAP_FAILED) {
         perror_exit("mmap");
       }
@@ -948,8 +964,13 @@ auto main() -> int {
           exbuf.fd                         // fd
       };
 
-      std::printf("buffer%d @ %p, length: %u, offset: %u, fd: %d\n", i, mem, bufinfo.length,
-                  bufinfo.offset, bufinfo.fd);
+      std::printf(
+          "buffer%d @ %p, length: %u, offset: %u, fd: %d\n",
+          i,
+          mem,
+          bufinfo.length,
+          bufinfo.offset,
+          bufinfo.fd);
 
       if (::ioctl(ctx.video_fd, VIDIOC_QBUF, &buf) == -1) {
         perror_exit("VIDIOC_QBUF");
@@ -972,9 +993,12 @@ auto main() -> int {
     return -1;
   }
 
-  ctx.gbm_surface =
-      ::gbm_surface_create(ctx.gbm_device, ctx.display_mode.hdisplay, ctx.display_mode.vdisplay,
-                           GBM_FORMAT_ARGB8888, GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
+  ctx.gbm_surface = ::gbm_surface_create(
+      ctx.gbm_device,
+      ctx.display_mode.hdisplay,
+      ctx.display_mode.vdisplay,
+      GBM_FORMAT_ARGB8888,
+      GBM_BO_USE_SCANOUT | GBM_BO_USE_RENDERING);
   if (!ctx.gbm_surface) {
     std::cerr << "gbm_surface_create: failed to create gbm surface" << std::endl;
     return -1;
@@ -982,9 +1006,11 @@ auto main() -> int {
 
   std::tie(ctx.egl_display, ctx.egl_config, ctx.egl_context) = init_egl(ctx.gbm_device);
 
-  ctx.egl_surface =
-      ::eglCreateWindowSurface(ctx.egl_display, ctx.egl_config,
-                               reinterpret_cast<::EGLNativeWindowType>(ctx.gbm_surface), nullptr);
+  ctx.egl_surface = ::eglCreateWindowSurface(
+      ctx.egl_display,
+      ctx.egl_config,
+      reinterpret_cast<::EGLNativeWindowType>(ctx.gbm_surface),
+      nullptr);
   if (ctx.egl_surface == EGL_NO_SURFACE) {
     std::cerr << "failed to create egl surface" << std::endl;
     return -1;
@@ -1035,8 +1061,8 @@ auto main() -> int {
       };
       // clang-format on
 
-      ::EGLImageKHR image = ::eglCreateImageKHR(ctx.egl_display, EGL_NO_CONTEXT,
-                                                EGL_LINUX_DMA_BUF_EXT, nullptr, attrs);
+      ::EGLImageKHR image = ::eglCreateImageKHR(
+          ctx.egl_display, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, nullptr, attrs);
       if (image == EGL_NO_IMAGE_KHR) {
         std::cerr << "failed to create image" << std::endl;
         return -1;
@@ -1168,8 +1194,8 @@ auto main() -> int {
     ctx.gbm_bo = ::gbm_surface_lock_front_buffer(ctx.gbm_surface);
     ctx.fb_id = get_gbm_bo_fb_id(ctx.drm_fd, ctx.gbm_bo);
 
-    if (::drmModeSetCrtc(ctx.drm_fd, ctx.crtc_id, ctx.fb_id, 0, 0, &ctx.connector_id, 1,
-                         &ctx.display_mode)) {
+    if (::drmModeSetCrtc(
+            ctx.drm_fd, ctx.crtc_id, ctx.fb_id, 0, 0, &ctx.connector_id, 1, &ctx.display_mode)) {
       std::cerr << "drmModeSetCrtc: " << std::strerror(errno) << std::endl;
       return -1;
     }
@@ -1188,8 +1214,8 @@ auto main() -> int {
     ctx.gbm_bo_next = ::gbm_surface_lock_front_buffer(ctx.gbm_surface);
     ctx.fb_id_next = get_gbm_bo_fb_id(ctx.drm_fd, ctx.gbm_bo_next);
 
-    if (::drmModePageFlip(ctx.drm_fd, ctx.crtc_id, ctx.fb_id_next, DRM_MODE_PAGE_FLIP_EVENT,
-                          &ctx)) {
+    if (::drmModePageFlip(
+            ctx.drm_fd, ctx.crtc_id, ctx.fb_id_next, DRM_MODE_PAGE_FLIP_EVENT, &ctx)) {
       std::cerr << "failed to queue page flip: " << std::strerror(errno) << std::endl;
       return -1;
     }

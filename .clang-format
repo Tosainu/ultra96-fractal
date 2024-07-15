@@ -1,0 +1,23 @@
+---
+BasedOnStyle: Google
+---
+Language: Cpp
+AccessModifierOffset: -2
+AlignAfterOpenBracket: AlwaysBreak
+AlignConsecutiveAssignments: false
+AllowShortFunctionsOnASingleLine: Empty
+BinPackArguments: false
+BreakBeforeConceptDeclarations: Always
+ColumnLimit: 100
+Cpp11BracedListStyle: true
+DerivePointerAlignment: false
+IndentPPDirectives: AfterHash
+IndentRequiresClause: true
+IndentWidth: 2
+PackConstructorInitializers: CurrentLine
+SortIncludes: false
+SpacesBeforeTrailingComments: 1
+---
+Language: Proto
+IndentWidth: 2
+ColumnLimit: 100
