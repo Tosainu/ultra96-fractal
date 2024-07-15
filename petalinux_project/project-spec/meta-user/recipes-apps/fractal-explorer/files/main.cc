@@ -350,34 +350,52 @@ public:
 #undef FRACTAL_CONTROLLER_GETTER_SETTER
 };
 
+inline auto drm_mode_get_resources(int fd) {
+  constexpr auto deleter = [](::drmModeRes* ptr) { ::drmModeFreeResources(ptr); };
+  return std::unique_ptr<::drmModeRes, decltype(deleter)>{::drmModeGetResources(fd), deleter};
+}
+
+inline auto drm_mode_get_connector(int fd, std::uint32_t connector_id) {
+  constexpr auto deleter = [](::drmModeConnector* ptr) { ::drmModeFreeConnector(ptr); };
+  return std::unique_ptr<::drmModeConnector, decltype(deleter)>{
+      ::drmModeGetConnector(fd, connector_id), deleter};
+}
+
+inline auto drm_mode_get_encoder(int fd, std::uint32_t encoder_id) {
+  constexpr auto deleter = [](::drmModeEncoder* ptr) { ::drmModeFreeEncoder(ptr); };
+  return std::unique_ptr<::drmModeEncoder, decltype(deleter)>{
+      ::drmModeGetEncoder(fd, encoder_id), deleter};
+}
+
 std::tuple<std::uint32_t, std::uint32_t, ::drmModeModeInfo> init_drm(int fd) {
-  auto resources = ::drmModeGetResources(fd);
+  const auto resources = drm_mode_get_resources(fd);
   if (!resources) {
-    throw std::runtime_error{"drmModeGetResources: "s + std::strerror(errno)};
+    throw std::runtime_error{"drmModeGetResources"};
   }
 
-  ::drmModeConnector* connector{};
-  for (int i = 0; i < resources->count_connectors; ++i) {
-    connector = ::drmModeGetConnector(fd, resources->connectors[i]);
-    if (!connector) continue;
-    if (connector->connection == DRM_MODE_CONNECTED && connector->count_modes > 0) break;
-    ::drmModeFreeConnector(connector);
-    connector = nullptr;
-  }
+  const auto connector = [fd, &resources = *resources]() -> decltype(drm_mode_get_connector(0, 0)) {
+    for (int i = 0; i < resources.count_connectors; ++i) {
+      auto connector = drm_mode_get_connector(fd, resources.connectors[i]);
+      if (!connector) continue;
+      if (connector->connection == DRM_MODE_CONNECTED && connector->count_modes > 0) {
+        return connector;
+      }
+    }
+    return nullptr;
+  }();
   if (!connector) {
     throw std::runtime_error{"connected connector not found"};
   }
 
   std::uint32_t crtc_id{};
   if (connector->encoder_id) {
-    auto e = ::drmModeGetEncoder(fd, connector->encoder_id);
+    auto e = drm_mode_get_encoder(fd, connector->encoder_id);
     crtc_id = e->crtc_id;
-    ::drmModeFreeEncoder(e);
   } else {
     bool crtc_found = false;
 
     for (int i = 0; i < resources->count_encoders; ++i) {
-      auto e = ::drmModeGetEncoder(fd, resources->encoders[i]);
+      auto e = drm_mode_get_encoder(fd, resources->encoders[i]);
       if (!e) continue;
       for (int j = 0; j < resources->count_crtcs; ++j) {
         if (e->possible_crtcs & (1 << j)) {
@@ -386,7 +404,6 @@ std::tuple<std::uint32_t, std::uint32_t, ::drmModeModeInfo> init_drm(int fd) {
           break;
         }
       }
-      ::drmModeFreeEncoder(e);
       if (crtc_found) break;
     }
 
@@ -410,11 +427,7 @@ std::tuple<std::uint32_t, std::uint32_t, ::drmModeModeInfo> init_drm(int fd) {
     mode = &connector->modes[0];
   }
 
-  std::uint32_t connector_id = connector->connector_id;
-
-  ::drmModeFreeConnector(connector);
-
-  return std::make_tuple(crtc_id, connector_id, *mode);
+  return std::make_tuple(crtc_id, connector->connector_id, *mode);
 }
 
 std::tuple<::EGLDisplay, ::EGLConfig, ::EGLContext> init_egl(::EGLDisplay display) {
